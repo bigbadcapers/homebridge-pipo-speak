@@ -1,0 +1,190 @@
+{
+  "pluginAlias": "PipoSpeak",
+  "pluginType": "platform",
+  "singular": true,
+  "headerDisplay": "Speak short phrases on your HomePod (or any AirPlay speaker). Each **button** below shows up in the Home app as a momentary switch — flip it on and the phrase is spoken, then it resets itself. Speech is synthesized fully offline with a bundled Piper voice; nothing is sent to the cloud.",
+  "footerDisplay": "Playback uses the **homebridge-homepod-radio** `/play` route automatically when that plugin is installed; otherwise it streams directly with **pyatv** (`atvremote`). The optional LAN HTTP endpoint is **off by default** — only enable it on a trusted network.",
+  "schema": {
+    "type": "object",
+    "properties": {
+      "name": {
+        "title": "Platform Name",
+        "type": "string",
+        "default": "Pipo Speak",
+        "required": true,
+        "description": "Shown in the Homebridge log only."
+      },
+      "buttons": {
+        "title": "Phrase Buttons",
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "title": "Button Name",
+              "type": "string",
+              "required": true,
+              "placeholder": "Dinner is ready"
+            },
+            "phrase": {
+              "title": "Phrase to Speak",
+              "type": "string",
+              "required": true,
+              "placeholder": "Dinner is ready, come to the kitchen."
+            },
+            "volume": {
+              "title": "Volume (0-100)",
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100,
+              "placeholder": "75",
+              "description": "Optional. Leave blank to use the default volume below."
+            }
+          }
+        }
+      },
+      "defaultVolume": {
+        "title": "Default Volume (0-100)",
+        "type": "integer",
+        "default": 75,
+        "minimum": 0,
+        "maximum": 100
+      },
+      "playback": {
+        "title": "Playback Target",
+        "type": "string",
+        "default": "auto",
+        "oneOf": [
+          { "title": "Auto (homepod-radio if installed, else pyatv)", "enum": ["auto"] },
+          { "title": "homebridge-homepod-radio /play route", "enum": ["homepod-radio"] },
+          { "title": "pyatv direct (atvremote)", "enum": ["pyatv"] }
+        ]
+      },
+      "homepodRadioPlayBase": {
+        "title": "homepod-radio /play Base URL",
+        "type": "string",
+        "default": "http://127.0.0.1:7654/play",
+        "description": "Used for the homepod-radio playback target.",
+        "condition": {
+          "functionBody": "return model.playback !== 'pyatv';"
+        }
+      },
+      "mediaPath": {
+        "title": "Shared Media Directory",
+        "type": "string",
+        "default": "/var/www/tones",
+        "description": "Directory the homepod-radio plugin reads WAV files from. The synthesized clip is written here before the /play route is triggered.",
+        "condition": {
+          "functionBody": "return model.playback !== 'pyatv';"
+        }
+      },
+      "atvId": {
+        "title": "pyatv Device ID",
+        "type": "string",
+        "placeholder": "AA:BB:CC:DD:EE:FF",
+        "description": "Identifier of the target speaker for pyatv (from `atvremote scan`). Required for the pyatv playback target.",
+        "condition": {
+          "functionBody": "return model.playback !== 'homepod-radio';"
+        }
+      },
+      "voice": {
+        "title": "Voice",
+        "type": "string",
+        "default": "en_US-lessac-low",
+        "description": "Piper voice key. Downloaded on install. Stick to a *low* tier voice on memory-constrained boards."
+      },
+      "enableHttp": {
+        "title": "Enable LAN HTTP \"speak anything\" endpoint",
+        "type": "boolean",
+        "default": false,
+        "description": "When on, exposes POST /say (and GET /say?text=...) so other devices on your network can speak arbitrary text. No authentication — keep it on a trusted LAN only."
+      },
+      "httpPort": {
+        "title": "HTTP Port",
+        "type": "integer",
+        "default": 8095,
+        "minimum": 1,
+        "maximum": 65535,
+        "condition": {
+          "functionBody": "return model.enableHttp === true;"
+        }
+      },
+      "httpBind": {
+        "title": "HTTP Bind Address",
+        "type": "string",
+        "default": "0.0.0.0",
+        "condition": {
+          "functionBody": "return model.enableHttp === true;"
+        }
+      },
+      "maxChars": {
+        "title": "Max Characters Per Utterance",
+        "type": "integer",
+        "default": 600,
+        "minimum": 1,
+        "maximum": 4000
+      },
+      "minAvailableMb": {
+        "title": "Minimum Free RAM (MiB) Before Synthesizing",
+        "type": "integer",
+        "default": 90,
+        "minimum": 0,
+        "description": "Pre-flight memory gate. If MemAvailable is below this, the request is refused instead of risking an out-of-memory reboot on small boards. Set 0 to disable."
+      },
+      "cooldownSeconds": {
+        "title": "Cooldown Between Utterances (seconds)",
+        "type": "number",
+        "default": 4,
+        "minimum": 0
+      },
+      "piperThreads": {
+        "title": "Piper Thread Cap",
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 8,
+        "placeholder": "(default)",
+        "description": "Optional. Fewer threads = lower CPU/memory spike, slower synthesis. Recommended: 1 on a single-core / low-RAM board."
+      }
+    }
+  },
+  "layout": [
+    {
+      "type": "section",
+      "title": "Phrase Buttons",
+      "expandable": true,
+      "expanded": true,
+      "items": [
+        {
+          "key": "buttons",
+          "type": "array",
+          "items": [
+            "buttons[].name",
+            "buttons[].phrase",
+            "buttons[].volume"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "title": "Playback",
+      "expandable": true,
+      "expanded": false,
+      "items": ["playback", "defaultVolume", "homepodRadioPlayBase", "mediaPath", "atvId", "voice"]
+    },
+    {
+      "type": "section",
+      "title": "LAN HTTP Endpoint (optional)",
+      "expandable": true,
+      "expanded": false,
+      "items": ["enableHttp", "httpPort", "httpBind"]
+    },
+    {
+      "type": "section",
+      "title": "Advanced / Memory Safety",
+      "expandable": true,
+      "expanded": false,
+      "items": ["maxChars", "minAvailableMb", "cooldownSeconds", "piperThreads"]
+    }
+  ]
+}

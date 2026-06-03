@@ -1,0 +1,7 @@
+# The speech engine + voices are fetched by postinstall on the target machine;
+# never ship or commit them.
+vendor/
+*.wav
+*.tar.gz
+*.log
+node_modules/

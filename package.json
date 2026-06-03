@@ -1,0 +1,50 @@
+{
+  "displayName": "HomePod Say Anything",
+  "name": "homebridge-pipo-speak",
+  "version": "0.1.0",
+  "description": "Self-contained Homebridge plugin that turns short text phrases into spoken announcements on a HomePod (or any AirPlay speaker). Configure phrase buttons in the UI and, optionally, expose a LAN HTTP endpoint to speak arbitrary text. Bundles a lean offline Piper voice via postinstall, so there is nothing extra to compile.",
+  "author": "bigbadcapers",
+  "license": "MIT",
+  "homepage": "https://github.com/bigbadcapers/homebridge-pipo-speak#readme",
+  "engines": {
+    "homebridge": ">=1.6.0 || ^2.0.0-beta.0",
+    "node": ">=18.0.0"
+  },
+  "main": "index.js",
+  "scripts": {
+    "postinstall": "node scripts/postinstall.js",
+    "fetch-voice": "node scripts/postinstall.js"
+  },
+  "keywords": [
+    "homebridge",
+    "homebridge-plugin",
+    "plugin",
+    "homepod",
+    "homepod mini",
+    "apple tv",
+    "airplay",
+    "tts",
+    "text-to-speech",
+    "piper",
+    "speech",
+    "announcement",
+    "say",
+    "pyatv"
+  ],
+  "files": [
+    "index.js",
+    "config.schema.json",
+    "lib/",
+    "scripts/",
+    "README.md",
+    "LICENSE"
+  ],
+  "dependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bigbadcapers/homebridge-pipo-speak.git"
+  },
+  "bugs": {
+    "url": "https://github.com/bigbadcapers/homebridge-pipo-speak/issues"
+  }
+}

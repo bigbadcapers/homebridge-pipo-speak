@@ -1,0 +1,7 @@
+# Don't publish downloaded binaries/voices or local test artifacts; postinstall
+# fetches them fresh on the user's machine.
+vendor/
+*.wav
+*.tar.gz
+*.log
+.gitignore
