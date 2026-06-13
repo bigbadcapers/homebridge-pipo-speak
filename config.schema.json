@@ -2,7 +2,7 @@
   "pluginAlias": "PipoSpeak",
   "pluginType": "platform",
   "singular": true,
-  "footerDisplay": "Playback uses the [homebridge-homepod-radio](https://www.npmjs.com/package/homebridge-homepod-radio) `/play` route automatically when that plugin is installed; otherwise it streams directly with **pyatv** (`atvremote`). The LAN HTTP endpoint is **off by default** — only enable it on a trusted network.",
+  "footerDisplay": "Playback uses the [homebridge-homepod-radio](https://www.npmjs.com/package/homebridge-homepod-radio) `/play` route automatically when that plugin is installed; otherwise it streams directly with **pyatv** (`atvremote`). The LAN HTTP endpoint is **off by default** — only enable it on a trusted network (or set an access token).",
   "schema": {
     "type": "object",
     "properties": {
@@ -45,6 +45,35 @@
               "condition": {
                 "functionBody": "return Array.isArray(model.buttons) && model.buttons[arrayIndices[0]] && model.buttons[arrayIndices[0]].volumeOverride === true;"
               }
+            },
+            "voice": {
+              "title": "Voice for this phrase (optional)",
+              "type": "string",
+              "description": "Leave blank to use the default voice. A non-default voice is downloaded automatically the first time it speaks.",
+              "oneOf": [
+                { "title": "Lessac - US English (light)", "enum": ["en_US-lessac-low"] },
+                { "title": "Amy - US English female (light)", "enum": ["en_US-amy-low"] },
+                { "title": "Ryan - US English male (light)", "enum": ["en_US-ryan-low"] },
+                { "title": "Kathleen - US English female (light)", "enum": ["en_US-kathleen-low"] },
+                { "title": "Danny - US English male (light)", "enum": ["en_US-danny-low"] },
+                { "title": "Alan - British English male (light)", "enum": ["en_GB-alan-low"] },
+                { "title": "Lessac - US English (richer)", "enum": ["en_US-lessac-medium"] },
+                { "title": "Amy - US English female (richer)", "enum": ["en_US-amy-medium"] }
+              ]
+            },
+            "speed": {
+              "title": "Speed for this phrase (optional)",
+              "type": "number",
+              "minimum": 0.5,
+              "maximum": 2,
+              "placeholder": "1.0",
+              "description": "Leave blank to use the default speed. 1.0 = normal, 2.0 = twice as fast, 0.5 = half speed."
+            },
+            "atvId": {
+              "title": "Speaker for this phrase (optional)",
+              "type": "string",
+              "placeholder": "AA:BB:CC:DD:EE:FF",
+              "description": "Optional pyatv device ID to play this one phrase on a specific speaker/room. Leave blank to use the default playback target."
             }
           }
         }
@@ -55,6 +84,14 @@
         "default": 75,
         "minimum": 0,
         "maximum": 100
+      },
+      "speed": {
+        "title": "Default Speech Speed",
+        "type": "number",
+        "default": 1,
+        "minimum": 0.5,
+        "maximum": 2,
+        "description": "1.0 = normal, 2.0 = twice as fast, 0.5 = half speed. Applied to every phrase unless a button overrides it."
       },
       "playback": {
         "title": "Playback Target",
@@ -81,21 +118,51 @@
         "default": "en_US-lessac-low",
         "description": "Offline Piper voice. The voice you pick is downloaded automatically the first time it speaks. \"Light\" voices use the least memory — best on small boards.",
         "oneOf": [
-          { "title": "Lessac - US English (light, default)", "enum": ["en_US-lessac-low"] },
-          { "title": "Amy - US English female (light)", "enum": ["en_US-amy-low"] },
-          { "title": "Ryan - US English male (light)", "enum": ["en_US-ryan-low"] },
-          { "title": "Kathleen - US English female (light)", "enum": ["en_US-kathleen-low"] },
-          { "title": "Danny - US English male (light)", "enum": ["en_US-danny-low"] },
-          { "title": "Alan - British English male (light)", "enum": ["en_GB-alan-low"] },
-          { "title": "Lessac - US English (richer, more memory)", "enum": ["en_US-lessac-medium"] },
-          { "title": "Amy - US English female (richer, more memory)", "enum": ["en_US-amy-medium"] }
+          {
+            "title": "Lessac - US English (light, default)",
+            "enum": ["en_US-lessac-low"]
+          },
+          {
+            "title": "Amy - US English female (light)",
+            "enum": ["en_US-amy-low"]
+          },
+          {
+            "title": "Ryan - US English male (light)",
+            "enum": ["en_US-ryan-low"]
+          },
+          {
+            "title": "Kathleen - US English female (light)",
+            "enum": ["en_US-kathleen-low"]
+          },
+          {
+            "title": "Danny - US English male (light)",
+            "enum": ["en_US-danny-low"]
+          },
+          {
+            "title": "Alan - British English male (light)",
+            "enum": ["en_GB-alan-low"]
+          },
+          {
+            "title": "Lessac - US English (richer, more memory)",
+            "enum": ["en_US-lessac-medium"]
+          },
+          {
+            "title": "Amy - US English female (richer, more memory)",
+            "enum": ["en_US-amy-medium"]
+          }
         ]
+      },
+      "chimeFile": {
+        "title": "Attention Chime (optional)",
+        "type": "string",
+        "placeholder": "/var/www/tones/chime.wav",
+        "description": "Absolute path to a short WAV played right before each phrase. Leave blank for none."
       },
       "enableHttp": {
         "title": "Enable LAN HTTP \"speak anything\" endpoint",
         "type": "boolean",
         "default": false,
-        "description": "When on, exposes POST /say (and GET /say?text=...) so other devices on your network can speak arbitrary text. No authentication — keep it on a trusted LAN only."
+        "description": "When on, exposes POST /say (and GET /say?text=...) so other devices on your network can speak arbitrary text. Keep it on a trusted LAN, and/or set an access token below."
       },
       "httpPort": {
         "title": "HTTP Port",
@@ -106,6 +173,40 @@
         "condition": {
           "functionBody": "return model.enableHttp === true;"
         }
+      },
+      "httpToken": {
+        "title": "HTTP Access Token (optional)",
+        "type": "string",
+        "description": "When set, every /say request must present this token via ?token=, an Authorization: Bearer header, or X-Auth-Token. /healthz stays open. Leave blank for no auth (trusted LAN only).",
+        "condition": {
+          "functionBody": "return model.enableHttp === true;"
+        }
+      },
+      "cacheEnabled": {
+        "title": "Cache synthesized phrases",
+        "type": "boolean",
+        "default": true,
+        "description": "Replay a repeated phrase from a cached WAV instead of re-synthesizing it. Strongly recommended on small boards — it removes the on-demand synthesis (and its memory spike) from the common path."
+      },
+      "preRender": {
+        "title": "Pre-render phrases on startup",
+        "type": "boolean",
+        "default": false,
+        "description": "Synthesize and cache every button phrase once in the background at startup, so the first press is instant. Paced so it won't overload a small board. Requires the cache."
+      },
+      "restoreVolume": {
+        "title": "Restore speaker volume after announcement (pyatv only)",
+        "type": "boolean",
+        "default": false,
+        "description": "For the pyatv playback target, read the speaker's current volume before an announcement and restore it afterwards. Adds two extra pyatv calls per utterance."
+      },
+      "cacheMaxEntries": {
+        "title": "Phrase Cache Size (entries)",
+        "type": "integer",
+        "default": 64,
+        "minimum": 1,
+        "maximum": 1000,
+        "description": "Maximum number of cached phrase WAVs kept on disk (oldest are evicted first)."
       },
       "maxChars": {
         "title": "Max Characters Per Utterance",
@@ -119,7 +220,7 @@
         "type": "integer",
         "default": 90,
         "minimum": 0,
-        "description": "Pre-flight memory gate. If MemAvailable is below this, the request is refused instead of risking an out-of-memory reboot on small boards. Set 0 to disable."
+        "description": "Pre-flight memory gate. If MemAvailable is below this, the request is refused instead of risking an out-of-memory reboot on small boards. Set 0 to disable. (Cache hits are never gated.)"
       },
       "cooldownSeconds": {
         "title": "Cooldown Between Utterances (seconds)",
@@ -152,17 +253,27 @@
             "buttons[].name",
             "buttons[].phrase",
             "buttons[].volumeOverride",
-            "buttons[].volume"
+            "buttons[].volume",
+            "buttons[].voice",
+            "buttons[].speed",
+            "buttons[].atvId"
           ]
         }
       ]
     },
     {
       "type": "section",
-      "title": "Playback",
+      "title": "Playback & Voice",
       "expandable": true,
       "expanded": false,
-      "items": ["playback", "defaultVolume", "atvId", "voice"]
+      "items": [
+        "playback",
+        "defaultVolume",
+        "speed",
+        "atvId",
+        "voice",
+        "chimeFile"
+      ]
     },
     {
       "type": "section",
@@ -171,7 +282,20 @@
       "expanded": false,
       "items": [
         "enableHttp",
-        { "key": "httpPort", "type": "number", "placeholder": "8095" }
+        { "key": "httpPort", "type": "number", "placeholder": "8095" },
+        "httpToken"
+      ]
+    },
+    {
+      "type": "section",
+      "title": "Performance & Startup",
+      "expandable": true,
+      "expanded": false,
+      "items": [
+        "cacheEnabled",
+        "preRender",
+        "restoreVolume",
+        "cacheMaxEntries"
       ]
     },
     {

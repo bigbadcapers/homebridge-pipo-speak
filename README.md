@@ -81,10 +81,17 @@ example:
       "platform": "PipoSpeak",
       "name": "Pipo Speak",
       "defaultVolume": 75,
+      "speed": 1.0,
       "playback": "auto",
+      "cacheEnabled": true,
       "buttons": [
         { "name": "Dinner", "phrase": "Dinner is ready, come to the kitchen." },
-        { "name": "Leaving", "phrase": "Leaving in five minutes.", "volume": 60 }
+        {
+          "name": "Leaving",
+          "phrase": "Leaving in five minutes.",
+          "volumeOverride": true,
+          "volume": 60
+        }
       ]
     }
   ]
@@ -116,6 +123,43 @@ for this phrase** on that button and set a specific value. (In raw JSON, a
 button with a `volume` but no `volumeOverride` is still honored, for backward
 compatibility.)
 
+### Per-phrase voice, speed, and speaker
+
+Each button can optionally override the global voice, speed, or target speaker
+for that one phrase — handy for multi-room announcements or giving a particular
+alert its own voice:
+
+- **Voice** — any bundled/downloadable Piper voice (downloaded on first use).
+  Blank = the default voice.
+- **Speed** — `0.5`–`2.0` (1.0 = normal, 2.0 = twice as fast). Blank = default.
+- **Speaker** — a pyatv device ID to play just this phrase on a specific
+  speaker/room. Blank = the default playback target.
+
+### Speech speed
+
+The global **Default Speech Speed** (`speed`, default `1.0`) sets how fast every
+phrase is spoken (`2.0` = twice as fast, `0.5` = half speed); a button's own
+speed overrides it.
+
+### Attention chime
+
+Set **Attention Chime** (`chimeFile`) to the absolute path of a short WAV and it
+is played immediately before every phrase — a quick "ding" to get attention.
+
+### Phrase cache & pre-render
+
+Synthesized phrases are **cached to disk** by default (`cacheEnabled`), keyed by
+text + voice + speed, so a repeated phrase is replayed from a file instead of
+re-synthesized. This removes the on-demand Piper run (and its memory spike) from
+the common path — the memory gate then only ever gates a genuine first-time
+synth. The cache holds up to `cacheMaxEntries` clips (default 64, oldest evicted
+first).
+
+Turn on **Pre-render phrases on startup** (`preRender`) to synthesize and cache
+every button phrase once, in the background, right after Homebridge starts — so
+even the first press is instant. Pre-rendering is paced through the same
+serialized, memory-gated queue, so it won't overwhelm a small board.
+
 ### Optional LAN HTTP endpoint
 
 Off by default. When `enableHttp` is on, the plugin listens on `httpPort`
@@ -124,19 +168,28 @@ Off by default. When `enableHttp` is on, the plugin listens on `httpPort`
 ```
 POST /say            body = text (text/plain, or form text=)
 GET  /say?text=...   convenience for quick tests
+GET  /healthz        liveness + status JSON (never requires a token)
 Optional ?volume=NN  overrides the default volume for one request
 ```
 
-There is **no authentication** — only enable it on a trusted LAN.
+By default there is **no authentication** — only enable it on a trusted LAN.
+For a little hardening, set **HTTP Access Token** (`httpToken`): every `/say`
+request must then present it via `?token=`, an `Authorization: Bearer <token>`
+header, or `X-Auth-Token`. `/healthz` stays open so uptime probes don't need the
+secret.
 
 ## Advanced / memory safety
 
-| Option | Default | Meaning |
-| --- | --- | --- |
-| `maxChars` | 600 | Truncate longer utterances. |
-| `minAvailableMb` | 90 | Refuse to synthesize below this much free RAM (0 = off). |
-| `cooldownSeconds` | 4 | Settle time after each utterance. |
-| `piperThreads` | (engine default) | Cap Piper threads; set `1` on low-RAM single-core boards. |
+| Option            | Default          | Meaning                                                                              |
+| ----------------- | ---------------- | ------------------------------------------------------------------------------------ |
+| `cacheEnabled`    | `true`           | Replay repeated phrases from a cached WAV instead of re-synthesizing.                 |
+| `cacheMaxEntries` | 64               | Max cached phrase WAVs kept on disk (oldest evicted first).                           |
+| `preRender`       | `false`          | Synthesize + cache every button phrase at startup, in the background.                |
+| `restoreVolume`   | `false`          | pyatv only: restore the speaker's prior volume after an announcement.                |
+| `maxChars`        | 600              | Truncate longer utterances.                                                          |
+| `minAvailableMb`  | 90               | Refuse to synthesize below this much free RAM (0 = off; cache hits are never gated). |
+| `cooldownSeconds` | 4                | Settle time after each utterance.                                                    |
+| `piperThreads`    | (engine default) | Cap Piper threads; set `1` on low-RAM single-core boards.                            |
 
 ## Environment overrides
 
@@ -145,6 +198,21 @@ There is **no authentication** — only enable it on a trusted LAN.
 - `PIPO_SPEAK_VOICE` — voice key to download (default `en_US-lessac-low`).
 - `PIPO_SPEAK_SKIP_DOWNLOAD=1` — skip the postinstall download (pre-staged
   `vendor/`).
+- `PIPO_SPEAK_CACHE_DIR` — override where cached phrase WAVs are stored
+  (default: `vendor/cache/`).
+
+## Development
+
+This plugin has **zero runtime dependencies**. The test suite uses the built-in
+Node test runner; ESLint is the only dev dependency:
+
+```bash
+PIPO_SPEAK_SKIP_DOWNLOAD=1 npm install   # devDependencies only; skip the engine fetch
+npm test                                 # node --test
+npm run lint                             # eslint .
+```
+
+CI runs lint + tests on Node 18, 20, and 22 (see `.github/workflows/ci.yml`).
 
 ## License
 
