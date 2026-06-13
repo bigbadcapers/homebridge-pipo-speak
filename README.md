@@ -21,9 +21,10 @@ text.
 
 Speech is synthesized **fully offline** with a bundled [Piper](https://github.com/rhasspy/piper)
 voice — nothing is sent to the cloud, and there is no compiler or Python
-dependency to install. The Piper engine and one voice are downloaded
+dependency to install. The Piper engine and the default voice are downloaded
 automatically on `npm install` (the same self-contained approach used by
-`ffmpeg-for-homebridge`).
+`ffmpeg-for-homebridge`); any **other** voice you pick in the UI is fetched
+automatically the first time it speaks.
 
 ## Installation
 
@@ -107,6 +108,13 @@ example:
 > the Homebridge user to the owning group once, e.g.
 > `sudo usermod -aG <owner-group> homebridge && sudo systemctl restart homebridge`.
 > Without write access the plugin logs `EACCES` and falls back to pyatv.
+
+### Per-phrase volume
+
+Each phrase plays at the **Default Volume** unless you tick **Override volume
+for this phrase** on that button and set a specific value. (In raw JSON, a
+button with a `volume` but no `volumeOverride` is still honored, for backward
+compatibility.)
 
 ### Optional LAN HTTP endpoint
 

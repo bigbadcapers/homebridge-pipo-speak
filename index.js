@@ -119,7 +119,11 @@ class PipoSpeakPlatform {
         return;
       }
       const current = accessory.context.button || button;
-      const volume = Number.isInteger(current.volume) ? current.volume : undefined;
+      // Per-button volume only applies when the override checkbox is on.
+      // Legacy configs (no volumeOverride field) keep honoring a set volume.
+      const overrideOn = current.volumeOverride === true
+        || (current.volumeOverride === undefined && Number.isInteger(current.volume));
+      const volume = overrideOn && Number.isInteger(current.volume) ? current.volume : undefined;
       this.speaker.say(current.phrase, volume).then((result) => {
         if (result.code !== 200) {
           this.log.warn(`pipo-speak: "${current.name}" -> ${result.code} ${result.message}`);

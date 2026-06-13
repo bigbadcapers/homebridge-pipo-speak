@@ -2,8 +2,7 @@
   "pluginAlias": "PipoSpeak",
   "pluginType": "platform",
   "singular": true,
-  "headerDisplay": "Speak short phrases on your HomePod (or any AirPlay speaker). Each **button** below shows up in the Home app as a momentary switch — flip it on and the phrase is spoken, then it resets itself. Speech is synthesized fully offline with a bundled Piper voice; nothing is sent to the cloud.",
-  "footerDisplay": "Playback uses the **homebridge-homepod-radio** `/play` route automatically when that plugin is installed; otherwise it streams directly with **pyatv** (`atvremote`). The optional LAN HTTP endpoint is **off by default** — only enable it on a trusted network.",
+  "footerDisplay": "Playback uses the [homebridge-homepod-radio](https://www.npmjs.com/package/homebridge-homepod-radio) `/play` route automatically when that plugin is installed; otherwise it streams directly with **pyatv** (`atvremote`). The LAN HTTP endpoint is **off by default** — only enable it on a trusted network.",
   "schema": {
     "type": "object",
     "properties": {
@@ -32,13 +31,20 @@
               "required": true,
               "placeholder": "Dinner is ready, come to the kitchen."
             },
+            "volumeOverride": {
+              "title": "Override volume for this phrase",
+              "type": "boolean",
+              "default": false
+            },
             "volume": {
               "title": "Volume (0-100)",
               "type": "integer",
               "minimum": 0,
               "maximum": 100,
               "placeholder": "75",
-              "description": "Optional. Leave blank to use the default volume below."
+              "condition": {
+                "functionBody": "return Array.isArray(model.buttons) && model.buttons[arrayIndices[0]] && model.buttons[arrayIndices[0]].volumeOverride === true;"
+              }
             }
           }
         }
@@ -54,29 +60,11 @@
         "title": "Playback Target",
         "type": "string",
         "default": "auto",
+        "description": "Auto-detects homebridge-homepod-radio and routes audio through it when installed; otherwise streams directly with pyatv. See the link at the bottom of this page.",
         "oneOf": [
-          { "title": "Auto (homepod-radio if installed, else pyatv)", "enum": ["auto"] },
-          { "title": "homebridge-homepod-radio /play route", "enum": ["homepod-radio"] },
-          { "title": "pyatv direct (atvremote)", "enum": ["pyatv"] }
+          { "title": "Use HomePod Radio if installed", "enum": ["auto"] },
+          { "title": "Stream directly with pyatv", "enum": ["pyatv"] }
         ]
-      },
-      "homepodRadioPlayBase": {
-        "title": "homepod-radio /play Base URL",
-        "type": "string",
-        "default": "http://127.0.0.1:7654/play",
-        "description": "Used for the homepod-radio playback target.",
-        "condition": {
-          "functionBody": "return model.playback !== 'pyatv';"
-        }
-      },
-      "mediaPath": {
-        "title": "Shared Media Directory",
-        "type": "string",
-        "default": "/var/www/tones",
-        "description": "Directory the homepod-radio plugin reads WAV files from. The synthesized clip is written here before the /play route is triggered.",
-        "condition": {
-          "functionBody": "return model.playback !== 'pyatv';"
-        }
       },
       "atvId": {
         "title": "pyatv Device ID",
@@ -91,7 +79,17 @@
         "title": "Voice",
         "type": "string",
         "default": "en_US-lessac-low",
-        "description": "Piper voice key. Downloaded on install. Stick to a *low* tier voice on memory-constrained boards."
+        "description": "Offline Piper voice. The voice you pick is downloaded automatically the first time it speaks. \"Light\" voices use the least memory — best on small boards.",
+        "oneOf": [
+          { "title": "Lessac - US English (light, default)", "enum": ["en_US-lessac-low"] },
+          { "title": "Amy - US English female (light)", "enum": ["en_US-amy-low"] },
+          { "title": "Ryan - US English male (light)", "enum": ["en_US-ryan-low"] },
+          { "title": "Kathleen - US English female (light)", "enum": ["en_US-kathleen-low"] },
+          { "title": "Danny - US English male (light)", "enum": ["en_US-danny-low"] },
+          { "title": "Alan - British English male (light)", "enum": ["en_GB-alan-low"] },
+          { "title": "Lessac - US English (richer, more memory)", "enum": ["en_US-lessac-medium"] },
+          { "title": "Amy - US English female (richer, more memory)", "enum": ["en_US-amy-medium"] }
+        ]
       },
       "enableHttp": {
         "title": "Enable LAN HTTP \"speak anything\" endpoint",
@@ -105,14 +103,6 @@
         "default": 8095,
         "minimum": 1,
         "maximum": 65535,
-        "condition": {
-          "functionBody": "return model.enableHttp === true;"
-        }
-      },
-      "httpBind": {
-        "title": "HTTP Bind Address",
-        "type": "string",
-        "default": "0.0.0.0",
         "condition": {
           "functionBody": "return model.enableHttp === true;"
         }
@@ -157,9 +147,11 @@
         {
           "key": "buttons",
           "type": "array",
+          "notitle": true,
           "items": [
             "buttons[].name",
             "buttons[].phrase",
+            "buttons[].volumeOverride",
             "buttons[].volume"
           ]
         }
@@ -170,14 +162,17 @@
       "title": "Playback",
       "expandable": true,
       "expanded": false,
-      "items": ["playback", "defaultVolume", "homepodRadioPlayBase", "mediaPath", "atvId", "voice"]
+      "items": ["playback", "defaultVolume", "atvId", "voice"]
     },
     {
       "type": "section",
-      "title": "LAN HTTP Endpoint (optional)",
+      "title": "LAN HTTP Endpoint",
       "expandable": true,
       "expanded": false,
-      "items": ["enableHttp", "httpPort", "httpBind"]
+      "items": [
+        "enableHttp",
+        { "key": "httpPort", "type": "number", "placeholder": "8095" }
+      ]
     },
     {
       "type": "section",
