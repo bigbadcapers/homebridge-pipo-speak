@@ -33,10 +33,15 @@ function startServer(opts) {
     ...opts,
   });
   server.start();
-  return new Promise((resolve) => {
-    server.server.on("listening", () => {
-      resolve({ server, speaker, port: server.server.address().port });
-    });
+  return new Promise((resolve, reject) => {
+    const s = server.server;
+    const done = () =>
+      resolve({ server, speaker, port: s.address().port });
+    if (s.listening) {
+      return done();
+    }
+    s.once("listening", done);
+    s.once("error", reject);
   });
 }
 
@@ -59,6 +64,8 @@ function req(port, pathname, { method = "GET", headers, body } = {}) {
         );
       },
     );
+    // Never hang a test: bail out if the server doesn't answer promptly.
+    r.setTimeout(8000, () => r.destroy(new Error("client request timeout")));
     r.on("error", reject);
     if (body) r.write(body);
     r.end();
