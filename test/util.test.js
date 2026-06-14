@@ -9,7 +9,31 @@ const {
   speedToLengthScale,
   safeTokenEqual,
   normalizeText,
+  wavDurationSeconds,
+  computeTimeout,
+  synthTimeoutMs,
 } = require("../lib/util");
+
+/** Build a minimal 44-byte PCM WAV header declaring `dataBytes` of audio. */
+function makeWavHeader(dataBytes, sampleRate, channels, bits) {
+  const byteRate = (sampleRate * channels * bits) / 8;
+  const blockAlign = (channels * bits) / 8;
+  const buf = Buffer.alloc(44);
+  buf.write("RIFF", 0, "ascii");
+  buf.writeUInt32LE(36 + dataBytes, 4);
+  buf.write("WAVE", 8, "ascii");
+  buf.write("fmt ", 12, "ascii");
+  buf.writeUInt32LE(16, 16);
+  buf.writeUInt16LE(1, 20); // PCM
+  buf.writeUInt16LE(channels, 22);
+  buf.writeUInt32LE(sampleRate, 24);
+  buf.writeUInt32LE(byteRate, 28);
+  buf.writeUInt16LE(blockAlign, 32);
+  buf.writeUInt16LE(bits, 34);
+  buf.write("data", 36, "ascii");
+  buf.writeUInt32LE(dataBytes, 40);
+  return buf;
+}
 
 test("clampVolume accepts integers in range, else fallback", () => {
   assert.equal(clampVolume(0, 75), 0);
@@ -65,4 +89,55 @@ test("normalizeText collapses whitespace and trims", () => {
   assert.equal(normalizeText(""), "");
   assert.equal(normalizeText(null), "");
   assert.equal(normalizeText(undefined), "");
+});
+
+test("wavDurationSeconds reads the clip length from the header", () => {
+  // 16 kHz mono 16-bit → byteRate 32000; 2.5 s → 80000 data bytes.
+  assert.equal(wavDurationSeconds(makeWavHeader(80000, 16000, 1, 16)), 2.5);
+});
+
+test("wavDurationSeconds trusts the declared size when the body is absent", () => {
+  // Header only (no PCM body), mirroring a head-only read of a large file.
+  assert.equal(
+    wavDurationSeconds(makeWavHeader(16000 * 2 * 10, 16000, 1, 16)),
+    10,
+  );
+});
+
+test("wavDurationSeconds returns null for non-WAV or truncated input", () => {
+  assert.equal(wavDurationSeconds(Buffer.from("not a wav")), null); // too short
+  assert.equal(wavDurationSeconds(Buffer.alloc(50)), null); // long enough, wrong magic
+  assert.equal(wavDurationSeconds("RIFFWAVE"), null); // not a Buffer
+  assert.equal(wavDurationSeconds(null), null);
+  assert.equal(wavDurationSeconds(undefined), null);
+});
+
+test("computeTimeout sizes a known duration to length + padding", () => {
+  assert.deepEqual(computeTimeout(2.5, 30000, 600000), {
+    timeoutMs: 2500 + 30000,
+    known: true,
+  });
+  // fractional ms rounds up before padding
+  assert.deepEqual(computeTimeout(2.5005, 30000, 600000), {
+    timeoutMs: Math.ceil(2.5005 * 1000) + 30000,
+    known: true,
+  });
+});
+
+test("computeTimeout falls back generously for unknown/invalid durations", () => {
+  for (const bad of [null, undefined, NaN, 0, -5, Infinity, "5", {}]) {
+    assert.deepEqual(computeTimeout(bad, 30000, 600000), {
+      timeoutMs: 600000,
+      known: false,
+    });
+  }
+});
+
+test("synthTimeoutMs keeps the floor for short text and extends for long text", () => {
+  assert.equal(synthTimeoutMs(100, 60000, 100), 60000); // short → floor
+  assert.equal(synthTimeoutMs(600, 60000, 100), 60000); // 600*100ms == floor
+  assert.equal(synthTimeoutMs(1000, 60000, 100), 100000); // long → extended
+  assert.equal(synthTimeoutMs(0, 60000, 100), 60000); // invalid → floor
+  assert.equal(synthTimeoutMs(-5, 60000, 100), 60000);
+  assert.equal(synthTimeoutMs("x", 60000, 100), 60000);
 });
