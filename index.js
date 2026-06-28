@@ -31,6 +31,8 @@ class PipoSpeakPlatform {
       ? this.config.buttons
       : [];
 
+    this.soundboard = this.config.soundboard || {};
+
     this.speaker = new Speaker({
       log,
       voice: this.config.voice,
@@ -46,16 +48,17 @@ class PipoSpeakPlatform {
       playback: this.config.playback || "auto",
       homepodRadioPlayBase: this.config.homepodRadioPlayBase,
       mediaPath: this.config.mediaPath,
-      atvId: this.config.atvId,
+      atvId: this.config.atvId || this.soundboard.atvId,
       chimeFile: this.config.chimeFile,
       restoreVolume: this.config.restoreVolume === true,
       cacheEnabled: this.config.cacheEnabled !== false,
       cacheMaxEntries: this.config.cacheMaxEntries,
+      warmConnection:
+        this.soundboard.enabled === true &&
+        this.soundboard.warmConnection !== false,
     });
 
     this.httpServer = null;
-
-    this.soundboard = this.config.soundboard || {};
 
     this.api.on("didFinishLaunching", () => {
       this.discoverButtons();
@@ -67,6 +70,9 @@ class PipoSpeakPlatform {
     this.api.on("shutdown", () => {
       if (this.httpServer) {
         this.httpServer.stop();
+      }
+      if (this.speaker) {
+        this.speaker.stop();
       }
     });
   }

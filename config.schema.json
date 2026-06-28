@@ -295,6 +295,15 @@
             "condition": {
               "functionBody": "return model.soundboard && model.soundboard.enabled === true;"
             }
+          },
+          "warmConnection": {
+            "title": "Keep a warm AirPlay connection (instant playback)",
+            "type": "boolean",
+            "default": true,
+            "description": "Hold one pyatv connection to the soundboard speaker open so presses play almost instantly instead of paying a 5-15s cold connect each time. Requires the soundboard speaker ID above. Falls back to the normal /play route if unavailable.",
+            "condition": {
+              "functionBody": "return model.soundboard && model.soundboard.enabled === true;"
+            }
           }
         }
       }
