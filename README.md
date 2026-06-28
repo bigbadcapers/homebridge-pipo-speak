@@ -178,6 +178,51 @@ request must then present it via `?token=`, an `Authorization: Bearer <token>`
 header, or `X-Auth-Token`. `/healthz` stays open so uptime probes don't need the
 secret.
 
+## Soundboard (HomeKit Television)
+
+An optional **Soundboard** exposes a HomeKit **Television** accessory whose
+"inputs" are audio files you already have on the Pi. Picking an input plays that
+sound on the **same speaker** the plugin speaks through — no synthesis, it just
+streams the file.
+
+How it works:
+
+- Point it at a **source folder** on the Pi. On startup the plugin scans that
+  folder **depth-first** and takes the first **N** playable audio files
+  (`.wav .mp3 .m4a .aac .flac .ogg .opus .aiff .wma`, up to 10).
+- It publishes a Television named after `soundboard.name` (default
+  `Soundboard`). Its inputs are **`None`** (identifier 0, a no-op resting state)
+  followed by one input per sound.
+- Selecting any non-`None` input plays that file, then the input snaps back to
+  `None` so you can fire the **same** sound again (momentary, like the phrase
+  buttons).
+
+Because HomeKit only surfaces **one Television per bridge**, the soundboard is
+published as an **external accessory** — add it in the Home app with the **same
+setup code as the bridge**.
+
+| Option                  | Default      | Meaning                                                                  |
+| ----------------------- | ------------ | ------------------------------------------------------------------------ |
+| `soundboard.enabled`    | `false`      | Turn the soundboard on.                                                  |
+| `soundboard.name`       | `Soundboard` | Name of the Television in the Home app.                                  |
+| `soundboard.sourceFolder` | —          | Absolute path to the folder scanned for sounds.                          |
+| `soundboard.maxSounds`  | 10           | How many sounds to expose as inputs (1–10), plus the synthetic `None`.   |
+| `soundboard.volume`     | (default)    | Optional volume (0–100) for soundboard playback.                         |
+| `soundboard.atvId`      | (default)    | Optional pyatv device ID to play the soundboard on a specific speaker.   |
+
+```json
+{
+  "platform": "PipoSpeak",
+  "soundboard": {
+    "enabled": true,
+    "name": "Soundboard",
+    "sourceFolder": "/var/www/tones/sample-gallery",
+    "maxSounds": 10,
+    "volume": 60
+  }
+}
+```
+
 ## Advanced / memory safety
 
 | Option            | Default          | Meaning                                                                              |

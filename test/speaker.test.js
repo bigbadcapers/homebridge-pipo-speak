@@ -125,3 +125,35 @@ test("_playTimeoutMs falls back to a generous cap for an unreadable clip", () =>
   const missing = path.join(os.tmpdir(), `pipo-speak-pt-missing-${process.pid}.wav`);
   assert.ok(speaker._playTimeoutMs(missing) >= 10 * 60 * 1000);
 });
+
+test("playFile() returns 400 for no path and 404 for a missing file", async () => {
+  const { speaker } = makeSpeaker();
+  assert.deepEqual(await speaker.playFile(), {
+    code: 400,
+    message: "no file path",
+  });
+  const missing = path.join(os.tmpdir(), `pipo-sb-missing-${process.pid}.wav`);
+  const res = await speaker.playFile(missing);
+  assert.equal(res.code, 404);
+});
+
+test("playFile() routes an existing clip through _play with a kept extension", async () => {
+  const { speaker } = makeSpeaker({ defaultVolume: 60 });
+  const clip = path.join(os.tmpdir(), `pipo-sb-${process.pid}.mp3`);
+  fs.writeFileSync(clip, makeWavHeader(16000, 16000, 1, 16));
+  const calls = [];
+  speaker._play = async (wav, volume, route) => {
+    calls.push({ wav, volume, outName: route.outName });
+  };
+  try {
+    const res = await speaker.playFile(clip);
+    assert.equal(res.code, 200);
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].wav, clip);
+    assert.equal(calls[0].volume, 60);
+    assert.equal(calls[0].outName, "pipo-speak-soundboard.mp3");
+  } finally {
+    fs.rmSync(clip, { force: true });
+  }
+});
+

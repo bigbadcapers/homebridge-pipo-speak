@@ -2,6 +2,11 @@
 
 const { Speaker } = require("./lib/speaker");
 const { SpeakHttpServer } = require("./lib/http-server");
+const { scanSounds } = require("./lib/soundboard-scanner");
+const {
+  buildSoundboardInputs,
+  setupSoundboardAccessory,
+} = require("./lib/soundboard");
 
 const PLUGIN_NAME = "homebridge-pipo-speak";
 const PLATFORM_NAME = "PipoSpeak";
@@ -50,10 +55,13 @@ class PipoSpeakPlatform {
 
     this.httpServer = null;
 
+    this.soundboard = this.config.soundboard || {};
+
     this.api.on("didFinishLaunching", () => {
       this.discoverButtons();
       this.maybeStartHttp();
       this.maybePreRender();
+      this.maybeSetupSoundboard();
     });
 
     this.api.on("shutdown", () => {
@@ -223,5 +231,87 @@ class PipoSpeakPlatform {
       }
       this.log.info("pipo-speak: pre-render complete.");
     })();
+  }
+
+  /**
+   * Opt-in: expose a HomeKit Television named after the soundboard whose
+   * "inputs" are the first N playable audio files found (depth-first) under a
+   * user-chosen folder. Selecting an input plays that file on the same speaker
+   * the plugin speaks through. The TV is published as an EXTERNAL accessory
+   * because HomeKit only surfaces one Television per bridge.
+   */
+  maybeSetupSoundboard() {
+    const sb = this.soundboard || {};
+    if (!sb.enabled) {
+      return;
+    }
+    const folder = sb.sourceFolder;
+    if (!folder) {
+      this.log.warn(
+        "pipo-speak: soundboard enabled but no source folder set; skipping.",
+      );
+      return;
+    }
+    const name = (sb.name && String(sb.name).trim()) || "Soundboard";
+    const maxSounds =
+      Number.isInteger(sb.maxSounds) && sb.maxSounds > 0 ? sb.maxSounds : 10;
+
+    let sounds;
+    try {
+      sounds = scanSounds(folder, { maxSounds });
+    } catch (err) {
+      this.log.error(
+        `pipo-speak: soundboard scan of "${folder}" failed (${err.message}).`,
+      );
+      return;
+    }
+    if (sounds.length === 0) {
+      this.log.warn(
+        `pipo-speak: soundboard found no playable audio under "${folder}"; skipping.`,
+      );
+      return;
+    }
+    this.log.info(
+      `pipo-speak: soundboard "${name}" found ${sounds.length} sound(s) in "${folder}".`,
+    );
+
+    const inputs = buildSoundboardInputs(sounds);
+
+    const uuid = this.api.hap.uuid.generate(`${PLATFORM_NAME}:soundboard`);
+    const accessory = new this.api.platformAccessory(
+      name,
+      uuid,
+      this.api.hap.Categories.TELEVISION,
+    );
+
+    const opts = {
+      volume: Number.isInteger(sb.volume) ? sb.volume : undefined,
+      atvId: sb.atvId || undefined,
+    };
+
+    setupSoundboardAccessory({
+      api: this.api,
+      Service,
+      Characteristic,
+      log: this.log,
+      accessory,
+      name,
+      inputs,
+      onSelect: (filePath, input) => {
+        this.speaker.playFile(filePath, opts).then((result) => {
+          if (result.code !== 200) {
+            this.log.warn(
+              `pipo-speak: soundboard "${input.name}" -> ${result.code} ${result.message}`,
+            );
+          }
+        });
+      },
+    });
+
+    // A Television must be published outside the bridge (one TV per bridge).
+    this.api.publishExternalAccessories(PLUGIN_NAME, [accessory]);
+    this.log.info(
+      `pipo-speak: soundboard "${name}" published with ${inputs.length - 1} input(s) + None.`,
+    );
   }
 }

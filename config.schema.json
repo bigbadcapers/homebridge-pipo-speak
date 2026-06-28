@@ -235,6 +235,68 @@
         "maximum": 8,
         "placeholder": "(default)",
         "description": "Optional. Fewer threads = lower CPU/memory spike, slower synthesis. Recommended: 1 on a single-core / low-RAM board."
+      },
+      "soundboard": {
+        "title": "Soundboard",
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "title": "Enable Soundboard",
+            "type": "boolean",
+            "default": false,
+            "description": "Expose a HomeKit Television whose inputs are the first audio files found in a folder. Selecting an input plays that sound on your speaker."
+          },
+          "name": {
+            "title": "Soundboard Name",
+            "type": "string",
+            "default": "Soundboard",
+            "placeholder": "Soundboard",
+            "description": "Name of the Television accessory shown in the Home app.",
+            "condition": {
+              "functionBody": "return model.soundboard && model.soundboard.enabled === true;"
+            }
+          },
+          "sourceFolder": {
+            "title": "Soundboard Source Folder",
+            "type": "string",
+            "placeholder": "/var/www/tones/sample-gallery",
+            "description": "Absolute path to a folder on the Pi. The first sounds found (depth-first) become the TV's inputs.",
+            "condition": {
+              "functionBody": "return model.soundboard && model.soundboard.enabled === true;"
+            }
+          },
+          "maxSounds": {
+            "title": "Maximum Inputs",
+            "type": "integer",
+            "default": 10,
+            "minimum": 1,
+            "maximum": 10,
+            "description": "How many sounds to expose as inputs (plus the synthetic 'None'). HomeKit limits a TV to a small number of inputs.",
+            "condition": {
+              "functionBody": "return model.soundboard && model.soundboard.enabled === true;"
+            }
+          },
+          "volume": {
+            "title": "Soundboard Volume (0-100)",
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100,
+            "placeholder": "(default volume)",
+            "description": "Optional volume for soundboard playback. Leave blank to use the default volume.",
+            "condition": {
+              "functionBody": "return model.soundboard && model.soundboard.enabled === true;"
+            }
+          },
+          "atvId": {
+            "title": "Soundboard Speaker (optional)",
+            "type": "string",
+            "placeholder": "AA:BB:CC:DD:EE:FF",
+            "description": "Optional pyatv device ID to play the soundboard on a specific speaker. Leave blank to use the default playback target.",
+            "condition": {
+              "functionBody": "return model.soundboard && model.soundboard.enabled === true;"
+            }
+          }
+        }
       }
     }
   },
@@ -304,6 +366,20 @@
       "expandable": true,
       "expanded": false,
       "items": ["maxChars", "minAvailableMb", "cooldownSeconds", "piperThreads"]
+    },
+    {
+      "type": "section",
+      "title": "Soundboard",
+      "expandable": true,
+      "expanded": false,
+      "items": [
+        "soundboard.enabled",
+        "soundboard.name",
+        "soundboard.sourceFolder",
+        "soundboard.maxSounds",
+        "soundboard.volume",
+        "soundboard.atvId"
+      ]
     }
   ]
 }
