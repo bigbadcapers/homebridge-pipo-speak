@@ -136,7 +136,13 @@ async def main_async(identifier):
         rid = msg.get("id")
         cmd = msg.get("cmd")
         if cmd == "ping":
-            _out({"id": rid, "ok": True, "pong": True})
+            # Idle keepalive: re-verify (and silently reconnect) so the held
+            # connection never goes stale between presses.
+            try:
+                await conn.ensure_connected()
+                _out({"id": rid, "ok": True, "pong": True})
+            except Exception as ex:  # noqa: BLE001
+                _out({"id": rid, "ok": False, "error": str(ex)})
             continue
         if cmd == "play":
             f = msg.get("file")
