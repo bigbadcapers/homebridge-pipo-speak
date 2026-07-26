@@ -151,7 +151,36 @@ test("playFile() routes an existing clip through _play with a kept extension", a
     assert.equal(calls.length, 1);
     assert.equal(calls[0].wav, clip);
     assert.equal(calls[0].volume, 60);
-    assert.equal(calls[0].outName, "pipo-speak-soundboard.mp3");
+    assert.match(
+      calls[0].outName,
+      /^pipo-speak-soundboard-pipo-sb-\d+-[a-f0-9]{8}\.mp3$/,
+    );
+  } finally {
+    fs.rmSync(clip, { force: true });
+  }
+});
+
+test("playFile() skips the warm connection for another AirPlay target", async () => {
+  const { speaker } = makeSpeaker({ atvId: "DEFAULT" });
+  const clip = path.join(os.tmpdir(), `pipo-sb-room-${process.pid}.mp3`);
+  fs.writeFileSync(clip, makeWavHeader(16000, 16000, 1, 16));
+  let warmCalls = 0;
+  let coldRoute;
+  speaker.warm = {
+    isReady: () => true,
+    playFile: async () => {
+      warmCalls += 1;
+      return true;
+    },
+  };
+  speaker._play = async (_file, _volume, route) => {
+    coldRoute = route;
+  };
+  try {
+    const result = await speaker.playFile(clip, { atvId: "ROOM2" });
+    assert.equal(result.code, 200);
+    assert.equal(warmCalls, 0);
+    assert.equal(coldRoute.atvId, "ROOM2");
   } finally {
     fs.rmSync(clip, { force: true });
   }

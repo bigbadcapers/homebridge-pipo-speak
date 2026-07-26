@@ -32,6 +32,14 @@ class PipoSpeakPlatform {
       : [];
 
     this.soundboard = this.config.soundboard || {};
+    this.soundboards = this._soundboardConfigs();
+    const warmSoundboard = this.soundboards.find(
+      ({ config }) => config.enabled === true && config.warmConnection !== false,
+    );
+    const defaultAtvId =
+      this.config.atvId ||
+      (warmSoundboard && warmSoundboard.config.atvId) ||
+      this.soundboard.atvId;
 
     this.speaker = new Speaker({
       log,
@@ -48,14 +56,12 @@ class PipoSpeakPlatform {
       playback: this.config.playback || "auto",
       homepodRadioPlayBase: this.config.homepodRadioPlayBase,
       mediaPath: this.config.mediaPath,
-      atvId: this.config.atvId || this.soundboard.atvId,
+      atvId: defaultAtvId,
       chimeFile: this.config.chimeFile,
       restoreVolume: this.config.restoreVolume === true,
       cacheEnabled: this.config.cacheEnabled !== false,
       cacheMaxEntries: this.config.cacheMaxEntries,
-      warmConnection:
-        this.soundboard.enabled === true &&
-        this.soundboard.warmConnection !== false,
+      warmConnection: !!warmSoundboard && !!defaultAtvId,
     });
 
     this.httpServer = null;
@@ -64,7 +70,7 @@ class PipoSpeakPlatform {
       this.discoverButtons();
       this.maybeStartHttp();
       this.maybePreRender();
-      this.maybeSetupSoundboard();
+      this.maybeSetupSoundboards();
     });
 
     this.api.on("shutdown", () => {
@@ -80,6 +86,23 @@ class PipoSpeakPlatform {
   // Restore cached accessories on startup.
   configureAccessory(accessory) {
     this.accessories.push(accessory);
+  }
+
+  _soundboardConfigs() {
+    const soundboards = [];
+    if (this.soundboard && typeof this.soundboard === "object") {
+      soundboards.push({ config: this.soundboard, legacyUuid: true, index: 0 });
+    }
+    const extraSoundboards = Array.isArray(this.config.soundboards)
+      ? this.config.soundboards
+      : [];
+    for (let index = 0; index < extraSoundboards.length; index++) {
+      const config = extraSoundboards[index];
+      if (config && typeof config === "object") {
+        soundboards.push({ config, legacyUuid: false, index: index + 1 });
+      }
+    }
+    return soundboards;
   }
 
   /**
@@ -240,14 +263,19 @@ class PipoSpeakPlatform {
   }
 
   /**
-   * Opt-in: expose a HomeKit Television named after the soundboard whose
-   * "inputs" are the first N playable audio files found (depth-first) under a
-   * user-chosen folder. Selecting an input plays that file on the same speaker
-   * the plugin speaks through. The TV is published as an EXTERNAL accessory
-   * because HomeKit only surfaces one Television per bridge.
+   * Opt-in: expose one or more HomeKit Televisions whose "inputs" are playable
+   * audio files. Selecting an input plays that file on the same speaker the
+   * plugin speaks through. TVs are published as EXTERNAL accessories because
+   * HomeKit only surfaces one Television per bridge.
    */
-  maybeSetupSoundboard() {
-    const sb = this.soundboard || {};
+  maybeSetupSoundboards() {
+    for (const soundboard of this.soundboards) {
+      this.maybeSetupSoundboard(soundboard);
+    }
+  }
+
+  maybeSetupSoundboard(soundboard) {
+    const sb = soundboard.config || {};
     if (!sb.enabled) {
       return;
     }
@@ -261,10 +289,17 @@ class PipoSpeakPlatform {
     const name = (sb.name && String(sb.name).trim()) || "Soundboard";
     const maxSounds =
       Number.isInteger(sb.maxSounds) && sb.maxSounds > 0 ? sb.maxSounds : 10;
+    const soundFiles = Array.isArray(sb.soundFiles)
+      ? sb.soundFiles.filter((file) => typeof file === "string" && file.trim())
+      : [];
+    const sourceDescription =
+      soundFiles.length > 0
+        ? `configured sound files under "${folder}"`
+        : `playable audio under "${folder}"`;
 
     let sounds;
     try {
-      sounds = scanSounds(folder, { maxSounds });
+      sounds = scanSounds(folder, { maxSounds, soundFiles });
     } catch (err) {
       this.log.error(
         `pipo-speak: soundboard scan of "${folder}" failed (${err.message}).`,
@@ -273,17 +308,21 @@ class PipoSpeakPlatform {
     }
     if (sounds.length === 0) {
       this.log.warn(
-        `pipo-speak: soundboard found no playable audio under "${folder}"; skipping.`,
+        `pipo-speak: soundboard found no ${sourceDescription}; skipping.`,
       );
       return;
     }
     this.log.info(
-      `pipo-speak: soundboard "${name}" found ${sounds.length} sound(s) in "${folder}".`,
+      `pipo-speak: soundboard "${name}" found ${sounds.length} ${sourceDescription}.`,
     );
 
     const inputs = buildSoundboardInputs(sounds);
 
-    const uuid = this.api.hap.uuid.generate(`${PLATFORM_NAME}:soundboard`);
+    const identity = (sb.id && String(sb.id).trim()) || name;
+    const uuidSeed = soundboard.legacyUuid
+      ? `${PLATFORM_NAME}:soundboard`
+      : `${PLATFORM_NAME}:soundboard:${identity}`;
+    const uuid = this.api.hap.uuid.generate(uuidSeed);
     const accessory = new this.api.platformAccessory(
       name,
       uuid,
@@ -293,6 +332,8 @@ class PipoSpeakPlatform {
     const opts = {
       volume: Number.isInteger(sb.volume) ? sb.volume : undefined,
       atvId: sb.atvId || undefined,
+      warmConnection: sb.warmConnection !== false,
+      cooldown: false,
     };
 
     setupSoundboardAccessory({

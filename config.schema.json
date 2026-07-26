@@ -260,7 +260,19 @@
             "title": "Soundboard Source Folder",
             "type": "string",
             "placeholder": "/var/www/tones/sample-gallery",
-            "description": "Absolute path to a folder on the Pi. The first sounds found (depth-first) become the TV's inputs.",
+            "description": "Absolute path to a folder on the Pi. If Sound Files is empty, the first sounds found (depth-first) become the TV's inputs; otherwise Sound Files are resolved relative to this folder.",
+            "condition": {
+              "functionBody": "return model.soundboard && model.soundboard.enabled === true;"
+            }
+          },
+          "soundFiles": {
+            "title": "Soundboard Sound Files (optional)",
+            "type": "array",
+            "description": "Optional ordered allowlist of audio files to expose as this TV's inputs. Use paths relative to the Source Folder, for example mac-system-sounds/Basso.aiff. Missing, non-audio, or outside-folder paths are skipped.",
+            "items": {
+              "type": "string",
+              "placeholder": "mac-system-sounds/Basso.aiff"
+            },
             "condition": {
               "functionBody": "return model.soundboard && model.soundboard.enabled === true;"
             }
@@ -271,7 +283,7 @@
             "default": 10,
             "minimum": 1,
             "maximum": 10,
-            "description": "How many sounds to expose as inputs (plus the synthetic 'None'). HomeKit limits a TV to a small number of inputs.",
+            "description": "How many auto-discovered sounds to expose as inputs when Sound Files is empty (plus the synthetic 'None'). HomeKit limits a TV to a small number of inputs.",
             "condition": {
               "functionBody": "return model.soundboard && model.soundboard.enabled === true;"
             }
@@ -303,6 +315,73 @@
             "description": "Hold one pyatv connection to the soundboard speaker open so presses play almost instantly instead of paying a 5-15s cold connect each time. Requires the soundboard speaker ID above. Falls back to the normal /play route if unavailable.",
             "condition": {
               "functionBody": "return model.soundboard && model.soundboard.enabled === true;"
+            }
+          }
+        }
+      },
+      "soundboards": {
+        "title": "Additional Soundboards",
+        "type": "array",
+        "description": "Optional additional HomeKit Television soundboards published by this same PipoSpeak platform instance.",
+        "items": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "title": "Enable Soundboard",
+              "type": "boolean",
+              "default": true
+            },
+            "id": {
+              "title": "Stable ID (optional)",
+              "type": "string",
+              "description": "Optional stable identifier used for the HomeKit accessory UUID. Leave blank to use the soundboard name."
+            },
+            "name": {
+              "title": "Soundboard Name",
+              "type": "string",
+              "default": "Soundboard",
+              "placeholder": "Mac System Sounds",
+              "description": "Name of the Television accessory shown in the Home app."
+            },
+            "sourceFolder": {
+              "title": "Soundboard Source Folder",
+              "type": "string",
+              "placeholder": "/var/www/tones",
+              "description": "Absolute path to a folder on the Pi. If Sound Files is empty, the first sounds found (depth-first) become the TV's inputs; otherwise Sound Files are resolved relative to this folder."
+            },
+            "soundFiles": {
+              "title": "Soundboard Sound Files (optional)",
+              "type": "array",
+              "description": "Optional ordered allowlist of audio files to expose as this TV's inputs. Use paths relative to the Source Folder.",
+              "items": {
+                "type": "string",
+                "placeholder": "mac-system-sounds/Basso.aiff"
+              }
+            },
+            "maxSounds": {
+              "title": "Maximum Inputs",
+              "type": "integer",
+              "default": 10,
+              "minimum": 1,
+              "maximum": 10,
+              "description": "How many auto-discovered sounds to expose as inputs when Sound Files is empty (plus the synthetic 'None')."
+            },
+            "volume": {
+              "title": "Soundboard Volume (0-100)",
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100,
+              "placeholder": "(default volume)"
+            },
+            "atvId": {
+              "title": "Soundboard Speaker (optional)",
+              "type": "string",
+              "placeholder": "AA:BB:CC:DD:EE:FF"
+            },
+            "warmConnection": {
+              "title": "Keep a warm AirPlay connection (instant playback)",
+              "type": "boolean",
+              "default": true
             }
           }
         }
@@ -385,9 +464,34 @@
         "soundboard.enabled",
         "soundboard.name",
         "soundboard.sourceFolder",
+        "soundboard.soundFiles",
         "soundboard.maxSounds",
         "soundboard.volume",
         "soundboard.atvId"
+      ]
+    },
+    {
+      "type": "section",
+      "title": "Additional Soundboards",
+      "expandable": true,
+      "expanded": false,
+      "items": [
+        {
+          "key": "soundboards",
+          "type": "array",
+          "notitle": true,
+          "items": [
+            "soundboards[].enabled",
+            "soundboards[].id",
+            "soundboards[].name",
+            "soundboards[].sourceFolder",
+            "soundboards[].soundFiles",
+            "soundboards[].maxSounds",
+            "soundboards[].volume",
+            "soundboards[].atvId",
+            "soundboards[].warmConnection"
+          ]
+        }
       ]
     }
   ]
