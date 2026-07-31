@@ -122,7 +122,10 @@ test("_playTimeoutMs falls back to a generous cap for an unreadable clip", () =>
     fs.rmSync(bad, { force: true });
   }
   // A missing file must not throw — it also uses the generous fallback.
-  const missing = path.join(os.tmpdir(), `pipo-speak-pt-missing-${process.pid}.wav`);
+  const missing = path.join(
+    os.tmpdir(),
+    `pipo-speak-pt-missing-${process.pid}.wav`,
+  );
   assert.ok(speaker._playTimeoutMs(missing) >= 10 * 60 * 1000);
 });
 
@@ -185,4 +188,3 @@ test("playFile() skips the warm connection for another AirPlay target", async ()
     fs.rmSync(clip, { force: true });
   }
 });
-
