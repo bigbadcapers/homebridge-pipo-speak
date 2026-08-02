@@ -122,7 +122,10 @@ test("_playTimeoutMs falls back to a generous cap for an unreadable clip", () =>
     fs.rmSync(bad, { force: true });
   }
   // A missing file must not throw — it also uses the generous fallback.
-  const missing = path.join(os.tmpdir(), `pipo-speak-pt-missing-${process.pid}.wav`);
+  const missing = path.join(
+    os.tmpdir(),
+    `pipo-speak-pt-missing-${process.pid}.wav`,
+  );
   assert.ok(speaker._playTimeoutMs(missing) >= 10 * 60 * 1000);
 });
 
@@ -157,3 +160,32 @@ test("playFile() routes an existing clip through _play with a kept extension", a
   }
 });
 
+test("playFile() routes AIFF as normalized WAV and removes the temporary file", async () => {
+  const { speaker } = makeSpeaker({ defaultVolume: 60 });
+  const clip = path.join(os.tmpdir(), `pipo-sb-${process.pid}.aiff`);
+  const normalized = path.join(
+    os.tmpdir(),
+    `pipo-sb-${process.pid}-normalized.wav`,
+  );
+  fs.writeFileSync(clip, Buffer.from("FORM"));
+  fs.writeFileSync(normalized, makeWavHeader(16000, 44100, 2, 16));
+  const calls = [];
+  speaker._normalizeForPlayback = async () => ({
+    path: normalized,
+    temp: true,
+  });
+  speaker._play = async (wav, volume, route) => {
+    calls.push({ wav, volume, outName: route.outName });
+  };
+  try {
+    const res = await speaker.playFile(clip);
+    assert.equal(res.code, 200);
+    assert.deepEqual(calls, [
+      { wav: normalized, volume: 60, outName: "pipo-speak-soundboard.wav" },
+    ]);
+    assert.equal(fs.existsSync(normalized), false);
+  } finally {
+    fs.rmSync(clip, { force: true });
+    fs.rmSync(normalized, { force: true });
+  }
+});

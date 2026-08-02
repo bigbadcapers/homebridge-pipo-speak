@@ -21,6 +21,7 @@ A volume of 0 (or missing) means "do not change volume".
 """
 import argparse
 import asyncio
+import asyncio.subprocess as asp
 import json
 import logging
 import os
@@ -39,6 +40,28 @@ except ImportError as ex:  # pragma: no cover - exercised only without pyatv
     _IMPORT_ERROR = ex
 
 _LOG = logging.getLogger("pipo-warm")
+_NORMALIZED_AUDIO_EXTENSIONS = {".aif", ".aiff"}
+
+
+async def _open_normalized_audio(source):
+    process = await asp.create_subprocess_exec(
+        "ffmpeg",
+        "-hide_banner", "-loglevel", "error",
+        "-i", source,
+        "-vn", "-acodec", "pcm_s16le", "-ar", "44100", "-ac", "2",
+        "-f", "wav", "pipe:1",
+        stdin=None, stdout=asp.PIPE, stderr=None,
+    )
+    return process, process.stdout
+
+
+async def _close_normalized_audio(process):
+    if process.returncode is None:
+        try:
+            process.terminate()
+        except ProcessLookupError:
+            pass
+    await process.wait()
 
 
 def _out(obj):
@@ -100,7 +123,14 @@ class WarmConnection:
                             _LOG.warning("set_volume(%s) failed: %s", volume, ex)
                     meta = MediaMetadata(title=os.path.basename(file_path))
                     _LOG.info("stream %s (attempt %d)", file_path, attempt)
-                    await atv.stream.stream_file(file_path, metadata=meta)
+                    if os.path.splitext(file_path)[1].lower() in _NORMALIZED_AUDIO_EXTENSIONS:
+                        ffmpeg_proc, normalized_stream = await _open_normalized_audio(file_path)
+                        try:
+                            await atv.stream.stream_file(normalized_stream, metadata=meta)
+                        finally:
+                            await _close_normalized_audio(ffmpeg_proc)
+                    else:
+                        await atv.stream.stream_file(file_path, metadata=meta)
                     return
                 except Exception as ex:  # noqa: BLE001
                     last = ex
