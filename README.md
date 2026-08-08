@@ -184,13 +184,14 @@ upgrades leave the verified Piper fallback untouched.
 
 ### Phrase cache & pre-render
 
-Synthesized phrases are **cached to disk** by default (`cacheEnabled`). WAVs
-remain content-addressed by text + voice + speed, with small metadata sidecars
-that group all provider/voice variants under a provider-independent text + speed
-request. The highest-quality valid variant is selected without contacting its
-provider. This removes the on-demand Piper run (and its memory spike) from the
-common path — the memory gate then only ever gates a genuine first-time synth.
-The cache holds up to `cacheMaxEntries` clips (default 64, oldest evicted first).
+Synthesized phrases are **cached to disk** by default (`cacheEnabled`). Each
+normalized text + speed request has one small manifest listing every available
+provider/voice artifact. Lookup reads that manifest directly and selects the
+highest-quality valid WAV without contacting its provider. Azure and Piper use
+the same generation, atomic storage, selection, eviction, and cleanup pipeline.
+This removes the on-demand Piper run (and its memory spike) from the common path
+— the memory gate then only ever gates a genuine first-time synth. The cache
+holds up to `cacheMaxEntries` clips (default 64, oldest evicted first).
 Set `cacheDir` to a Homebridge-writable directory outside the installed package
 (for example `/var/lib/homebridge/pipo-speak-cache`) so artifacts and quality
 metadata survive npm/plugin upgrades. `PIPO_SPEAK_CACHE_DIR` is the equivalent

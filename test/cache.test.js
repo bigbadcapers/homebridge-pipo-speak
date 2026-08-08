@@ -25,38 +25,41 @@ afterEach(() => {
   fs.rmSync(srcDir, { recursive: true, force: true });
 });
 
-test("key is deterministic and varies by text/voice/lengthScale", () => {
+test("requestKey is deterministic and varies by text/lengthScale", () => {
   const c = new PhraseCache({ dir });
-  const k1 = c.key("hello", "en_US-lessac-low", 1);
-  const k2 = c.key("hello", "en_US-lessac-low", 1);
+  const k1 = c.requestKey("hello", 1);
+  const k2 = c.requestKey("hello", 1);
   assert.equal(k1, k2);
-  assert.notEqual(k1, c.key("hello!", "en_US-lessac-low", 1));
-  assert.notEqual(k1, c.key("hello", "en_US-amy-low", 1));
-  assert.notEqual(k1, c.key("hello", "en_US-lessac-low", 0.5));
+  assert.notEqual(k1, c.requestKey("hello!", 1));
+  assert.notEqual(k1, c.requestKey("hello", 0.5));
   assert.match(k1, /^[0-9a-f]{40}$/);
 });
 
-test("put then get returns a non-empty cached path", async () => {
+test("store then getBest returns a non-empty cached artifact", async () => {
   const c = new PhraseCache({ dir });
-  assert.equal(c.get("hello", "v", 1), null);
-  const stored = await c.put(srcWav, "hello", "v", 1);
+  assert.equal(c.getBest("hello", 1), null);
+  const artifact = { provider: "piper", voice: "v", quality: 10 };
+  const stored = await c.store(srcWav, "hello", 1, artifact);
   assert.ok(stored);
-  const hit = c.get("hello", "v", 1);
+  const hit = c.getBest("hello", 1);
   assert.ok(hit);
-  assert.equal(hit, c.pathFor("hello", "v", 1));
-  assert.ok(fs.statSync(hit).size > 0);
+  assert.equal(hit.path, c.artifactPath("hello", 1, artifact));
+  assert.equal(hit.provider, "piper");
+  assert.ok(fs.statSync(hit.path).size > 0);
   // source is left intact
   assert.ok(fs.existsSync(srcWav));
 });
 
 test("getBest persists and ranks provider variants across instances", async () => {
   const first = new PhraseCache({ dir });
-  await first.put(srcWav, "hello", "en_US-lessac-low", 1, {
+  await first.store(srcWav, "hello", 1, {
     provider: "piper",
+    voice: "en_US-lessac-low",
     quality: 10,
   });
-  await first.put(srcWav, "hello", "en-US-Ava:DragonHDLatestNeural", 1, {
+  await first.store(srcWav, "hello", 1, {
     provider: "azure",
+    voice: "en-US-Ava:DragonHDLatestNeural",
     quality: 100,
   });
 
@@ -68,49 +71,49 @@ test("getBest persists and ranks provider variants across instances", async () =
   assert.equal(best.voice, "en-US-Ava:DragonHDLatestNeural");
 });
 
-test("getBest recognizes legacy exact-key WAVs without sidecars", () => {
+test("getBest ignores missing artifacts referenced by a manifest", async () => {
   const c = new PhraseCache({ dir });
-  const legacy = c.pathFor("legacy", "cloud-voice", 1);
-  fs.mkdirSync(dir, { recursive: true });
-  fs.copyFileSync(srcWav, legacy);
-
-  const best = c.getBest("legacy", 1, [
-    { voice: "cloud-voice", provider: "azure", quality: 100 },
-  ]);
-  assert.ok(best);
-  assert.equal(best.path, legacy);
-  assert.equal(best.quality, 100);
+  const artifact = { provider: "azure", voice: "cloud-voice", quality: 100 };
+  const stored = await c.store(srcWav, "missing", 1, artifact);
+  fs.unlinkSync(stored);
+  assert.equal(c.getBest("missing", 1), null);
 });
 
 test("disabled cache stores/returns nothing", async () => {
   const c = new PhraseCache({ dir, enabled: false });
-  const stored = await c.put(srcWav, "hello", "v", 1);
+  const stored = await c.store(srcWav, "hello", 1, {
+    provider: "piper",
+    voice: "v",
+    quality: 10,
+  });
   assert.equal(stored, null);
-  assert.equal(c.get("hello", "v", 1), null);
+  assert.equal(c.getBest("hello", 1), null);
 });
 
 test("eviction keeps at most maxEntries, oldest-first", async () => {
   const c = new PhraseCache({ dir, maxEntries: 2 });
-  await c.put(srcWav, "one", "v", 1);
-  await c.put(srcWav, "two", "v", 1);
+  const artifact = { provider: "piper", voice: "v", quality: 10 };
+  await c.store(srcWav, "one", 1, artifact);
+  await c.store(srcWav, "two", 1, artifact);
   // Pin explicit mtimes (resolution-independent) so "one" is unambiguously the
   // oldest before the third put triggers eviction.
   const old1 = new Date(Date.now() - 10000);
   const old2 = new Date(Date.now() - 5000);
-  fs.utimesSync(c.pathFor("one", "v", 1), old1, old1);
-  fs.utimesSync(c.pathFor("two", "v", 1), old2, old2);
-  await c.put(srcWav, "three", "v", 1);
+  fs.utimesSync(c.artifactPath("one", 1, artifact), old1, old1);
+  fs.utimesSync(c.artifactPath("two", 1, artifact), old2, old2);
+  await c.store(srcWav, "three", 1, artifact);
   assert.equal(c.size(), 2);
   // "one" was oldest → evicted
-  assert.equal(c.get("one", "v", 1), null);
-  assert.ok(c.get("two", "v", 1));
-  assert.ok(c.get("three", "v", 1));
+  assert.equal(c.getBest("one", 1), null);
+  assert.ok(c.getBest("two", 1));
+  assert.ok(c.getBest("three", 1));
 });
 
 test("clear removes all cached wavs", async () => {
   const c = new PhraseCache({ dir });
-  await c.put(srcWav, "a", "v", 1);
-  await c.put(srcWav, "b", "v", 1);
+  const artifact = { provider: "piper", voice: "v", quality: 10 };
+  await c.store(srcWav, "a", 1, artifact);
+  await c.store(srcWav, "b", 1, artifact);
   assert.equal(c.size(), 2);
   c.clear();
   assert.equal(c.size(), 0);
