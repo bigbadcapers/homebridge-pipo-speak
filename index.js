@@ -53,6 +53,7 @@ class PipoSpeakPlatform {
       restoreVolume: this.config.restoreVolume === true,
       cacheEnabled: this.config.cacheEnabled !== false,
       cacheMaxEntries: this.config.cacheMaxEntries,
+      azure: this.config.azure,
       warmConnection:
         this.soundboard.enabled === true &&
         this.soundboard.warmConnection !== false,
