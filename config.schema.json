@@ -166,7 +166,7 @@
             "title": "Use Azure cloud voice instead of the offline Piper voice",
             "type": "boolean",
             "default": false,
-            "description": "When on, phrases are rendered by Azure AI Speech (natural neural / Dragon HD voices) and cached, instead of the on-board Piper voice. Requires the Azure Speech key + region below. A cache miss makes one small HTTPS request (no local model), so it is safe on low-memory boards. Falls back to the offline voice if the key is missing."
+            "description": "When on, phrases are rendered by Azure AI Speech (natural neural / Dragon HD voices) and cached, instead of the on-board Piper voice. Requires the Azure Speech key + region below. A cache miss makes one small HTTPS request (no local model), so it is safe on low-memory boards. Falls back to the offline voice if the key is missing or a cloud request fails."
           },
           "region": {
             "title": "Azure Region",

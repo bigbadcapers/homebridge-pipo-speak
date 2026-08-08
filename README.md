@@ -162,7 +162,9 @@ more natural voice you can optionally switch to **Azure AI Speech** in the
 ```
 
 - **`enabled`** — toggle. When on (and a key is set), a cache miss is rendered
-  by Azure over HTTPS instead of by Piper; when off, nothing changes.
+  by Azure over HTTPS instead of by Piper. If a cloud request fails, the plugin
+  logs a warning and renders that phrase with the configured Piper voice; when
+  Azure is off, nothing changes.
 - **`region` / `key`** — from an Azure AI Speech resource. The **free F0 tier**
   (0.5M characters/month) is plenty for a phrase library. Instead of putting the
   key in `config.json`, you can leave it blank and set the
@@ -175,8 +177,8 @@ This is **safe on low-memory boards**: an Azure render is just an HTTPS request
 that writes a WAV (24 kHz mono PCM, the same shape Piper produces), so it does
 **not** load a model into RAM and the memory gate that protects Piper does not
 apply. Rendered phrases go into the same on-disk cache, so a repeated phrase is
-replayed from a file. If the key is missing the plugin logs a warning and falls
-back to the offline Piper voice.
+replayed from a file. If the key is missing or a cloud request fails, the plugin
+logs a warning and falls back to the offline Piper voice.
 
 ### Phrase cache & pre-render
 
