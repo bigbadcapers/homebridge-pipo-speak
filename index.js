@@ -53,6 +53,7 @@ class PipoSpeakPlatform {
       restoreVolume: this.config.restoreVolume === true,
       cacheEnabled: this.config.cacheEnabled !== false,
       cacheMaxEntries: this.config.cacheMaxEntries,
+      cacheDir: this.config.cacheDir,
       azure: this.config.azure,
       warmConnection:
         this.soundboard.enabled === true &&
@@ -176,15 +177,15 @@ class PipoSpeakPlatform {
         return;
       }
       const current = accessory.context.button || button;
-      this.speaker.say(current.phrase, this._buttonOpts(current)).then(
-        (result) => {
+      this.speaker
+        .say(current.phrase, this._buttonOpts(current))
+        .then((result) => {
           if (result.code !== 200) {
             this.log.warn(
               `pipo-speak: "${current.name}" -> ${result.code} ${result.message}`,
             );
           }
-        },
-      );
+        });
       // Momentary: snap back to off so it behaves like a button.
       setTimeout(() => {
         service.updateCharacteristic(Characteristic.On, false);

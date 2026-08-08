@@ -134,6 +134,110 @@ test("_render falls back to the configured Piper voice when Azure fails", async 
   );
 });
 
+test("stored Azure audio is used when the live endpoint is unavailable", async () => {
+  const { speaker } = makeSpeaker({
+    azure: {
+      enabled: true,
+      voice: "en-US-Ava:DragonHDLatestNeural",
+    },
+  });
+  const phrase = `offline cloud hit ${process.pid}`;
+  const source = path.join(os.tmpdir(), `pipo-cloud-hit-${process.pid}.wav`);
+  fs.writeFileSync(source, makeWavHeader(16000, 24000, 1, 16));
+  try {
+    assert.equal(speaker.azure, null);
+    await speaker.cache.put(source, phrase, speaker.azureVoice, 1, {
+      provider: "azure",
+      quality: 100,
+    });
+    speaker._synthesize = async () => {
+      throw new Error("Piper should not run for a stored Azure phrase");
+    };
+
+    const prepared = await speaker._prepareWav(phrase, speaker.voice, 1);
+    assert.equal(prepared.fromCache, true);
+    assert.equal(prepared.temp, false);
+    assert.equal(
+      prepared.path,
+      speaker.cache.pathFor(phrase, speaker.azureVoice, 1),
+    );
+  } finally {
+    fs.rmSync(source, { force: true });
+  }
+});
+
+test("low-quality cache hits return immediately and schedule one Azure upgrade", async () => {
+  const { speaker } = makeSpeaker();
+  const phrase = `quiet promotion ${process.pid}`;
+  const low = path.join(os.tmpdir(), `pipo-low-${process.pid}.wav`);
+  const high = path.join(os.tmpdir(), `pipo-high-${process.pid}.wav`);
+  fs.writeFileSync(low, makeWavHeader(16000, 16000, 1, 16));
+  fs.writeFileSync(high, makeWavHeader(24000, 24000, 1, 16));
+  await speaker.cache.put(low, phrase, speaker.voice, 1, {
+    provider: "piper",
+    quality: 10,
+  });
+
+  let release;
+  const pending = new Promise((resolve) => {
+    release = resolve;
+  });
+  let calls = 0;
+  speaker.azureVoice = "en-US-Ava:DragonHDLatestNeural";
+  speaker.azure = {
+    synthesize: async () => {
+      calls += 1;
+      await pending;
+      return high;
+    },
+  };
+
+  try {
+    const first = await speaker._prepareWav(phrase, speaker.azureVoice, 1);
+    const second = await speaker._prepareWav(phrase, speaker.azureVoice, 1);
+    assert.equal(first.path, speaker.cache.pathFor(phrase, speaker.voice, 1));
+    assert.equal(second.path, first.path);
+    assert.equal(calls, 1);
+
+    release();
+    await Promise.all([...speaker._upgrades.values()]);
+    const best = speaker.cache.getBest(phrase, 1);
+    assert.equal(best.provider, "azure");
+    assert.equal(best.quality, 100);
+  } finally {
+    release();
+    fs.rmSync(low, { force: true });
+    fs.rmSync(high, { force: true });
+  }
+});
+
+test("a failed background upgrade leaves the cached fallback usable", async () => {
+  const { speaker } = makeSpeaker();
+  const phrase = `failed promotion ${process.pid}`;
+  const low = path.join(os.tmpdir(), `pipo-failed-low-${process.pid}.wav`);
+  fs.writeFileSync(low, makeWavHeader(16000, 16000, 1, 16));
+  await speaker.cache.put(low, phrase, speaker.voice, 1, {
+    provider: "piper",
+    quality: 10,
+  });
+  speaker.azureVoice = "en-US-Ava:DragonHDLatestNeural";
+  speaker.azure = {
+    synthesize: async () => {
+      throw new Error("offline");
+    },
+  };
+
+  try {
+    const prepared = await speaker._prepareWav(phrase, speaker.azureVoice, 1);
+    await Promise.all([...speaker._upgrades.values()]);
+    assert.equal(prepared.fromCache, true);
+    assert.ok(speaker.cache.get(phrase, speaker.voice, 1));
+    assert.equal(speaker.cache.getBest(phrase, 1).quality, 10);
+  } finally {
+    fs.rmSync(low, { force: true });
+  }
+});
+
 test("_playTimeoutMs sizes the watchdog to the measured clip length", () => {
   const { speaker } = makeSpeaker();
   const wav = path.join(os.tmpdir(), `pipo-speak-pt-${process.pid}.wav`);

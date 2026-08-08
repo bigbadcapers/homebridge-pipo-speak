@@ -49,6 +49,39 @@ test("put then get returns a non-empty cached path", async () => {
   assert.ok(fs.existsSync(srcWav));
 });
 
+test("getBest persists and ranks provider variants across instances", async () => {
+  const first = new PhraseCache({ dir });
+  await first.put(srcWav, "hello", "en_US-lessac-low", 1, {
+    provider: "piper",
+    quality: 10,
+  });
+  await first.put(srcWav, "hello", "en-US-Ava:DragonHDLatestNeural", 1, {
+    provider: "azure",
+    quality: 100,
+  });
+
+  const restarted = new PhraseCache({ dir });
+  const best = restarted.getBest("hello", 1);
+  assert.ok(best);
+  assert.equal(best.provider, "azure");
+  assert.equal(best.quality, 100);
+  assert.equal(best.voice, "en-US-Ava:DragonHDLatestNeural");
+});
+
+test("getBest recognizes legacy exact-key WAVs without sidecars", () => {
+  const c = new PhraseCache({ dir });
+  const legacy = c.pathFor("legacy", "cloud-voice", 1);
+  fs.mkdirSync(dir, { recursive: true });
+  fs.copyFileSync(srcWav, legacy);
+
+  const best = c.getBest("legacy", 1, [
+    { voice: "cloud-voice", provider: "azure", quality: 100 },
+  ]);
+  assert.ok(best);
+  assert.equal(best.path, legacy);
+  assert.equal(best.quality, 100);
+});
+
 test("disabled cache stores/returns nothing", async () => {
   const c = new PhraseCache({ dir, enabled: false });
   const stored = await c.put(srcWav, "hello", "v", 1);

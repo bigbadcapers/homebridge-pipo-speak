@@ -161,10 +161,9 @@ more natural voice you can optionally switch to **Azure AI Speech** in the
 }
 ```
 
-- **`enabled`** — toggle. When on (and a key is set), a cache miss is rendered
-  by Azure over HTTPS instead of by Piper. If a cloud request fails, the plugin
-  logs a warning and renders that phrase with the configured Piper voice; when
-  Azure is off, nothing changes.
+- **`enabled`** — toggle. When on, Azure is the preferred renderer. If a cloud
+  request fails, the plugin logs a warning and renders that phrase with the
+  configured Piper voice.
 - **`region` / `key`** — from an Azure AI Speech resource. The **free F0 tier**
   (0.5M characters/month) is plenty for a phrase library. Instead of putting the
   key in `config.json`, you can leave it blank and set the
@@ -176,18 +175,26 @@ more natural voice you can optionally switch to **Azure AI Speech** in the
 This is **safe on low-memory boards**: an Azure render is just an HTTPS request
 that writes a WAV (24 kHz mono PCM, the same shape Piper produces), so it does
 **not** load a model into RAM and the memory gate that protects Piper does not
-apply. Rendered phrases go into the same on-disk cache, so a repeated phrase is
-replayed from a file. If the key is missing or a cloud request fails, the plugin
-logs a warning and falls back to the offline Piper voice.
+apply. Rendered phrases go into the same on-disk cache. A stored Azure rendering
+is replayed even when the key, network, or live endpoint is unavailable. If only
+a Piper rendering exists while Azure is available, playback uses Piper
+immediately and schedules one deduplicated Azure render in the background; a
+successful result becomes the preferred variant for the next request. Failed
+upgrades leave the verified Piper fallback untouched.
 
 ### Phrase cache & pre-render
 
-Synthesized phrases are **cached to disk** by default (`cacheEnabled`), keyed by
-text + voice + speed, so a repeated phrase is replayed from a file instead of
-re-synthesized. This removes the on-demand Piper run (and its memory spike) from
-the common path — the memory gate then only ever gates a genuine first-time
-synth. The cache holds up to `cacheMaxEntries` clips (default 64, oldest evicted
-first).
+Synthesized phrases are **cached to disk** by default (`cacheEnabled`). WAVs
+remain content-addressed by text + voice + speed, with small metadata sidecars
+that group all provider/voice variants under a provider-independent text + speed
+request. The highest-quality valid variant is selected without contacting its
+provider. This removes the on-demand Piper run (and its memory spike) from the
+common path — the memory gate then only ever gates a genuine first-time synth.
+The cache holds up to `cacheMaxEntries` clips (default 64, oldest evicted first).
+Set `cacheDir` to a Homebridge-writable directory outside the installed package
+(for example `/var/lib/homebridge/pipo-speak-cache`) so artifacts and quality
+metadata survive npm/plugin upgrades. `PIPO_SPEAK_CACHE_DIR` is the equivalent
+environment override.
 
 Turn on **Pre-render phrases on startup** (`preRender`) to synthesize and cache
 every button phrase once, in the background, right after Homebridge starts — so
@@ -235,14 +242,14 @@ Because HomeKit only surfaces **one Television per bridge**, the soundboard is
 published as an **external accessory** — add it in the Home app with the **same
 setup code as the bridge**.
 
-| Option                  | Default      | Meaning                                                                  |
-| ----------------------- | ------------ | ------------------------------------------------------------------------ |
-| `soundboard.enabled`    | `false`      | Turn the soundboard on.                                                  |
-| `soundboard.name`       | `Soundboard` | Name of the Television in the Home app.                                  |
-| `soundboard.sourceFolder` | —          | Absolute path to the folder scanned for sounds.                          |
-| `soundboard.maxSounds`  | 10           | How many sounds to expose as inputs (1–10), plus the synthetic `None`.   |
-| `soundboard.volume`     | (default)    | Optional volume (0–100) for soundboard playback.                         |
-| `soundboard.atvId`      | (default)    | Optional pyatv device ID to play the soundboard on a specific speaker.   |
+| Option                    | Default      | Meaning                                                                |
+| ------------------------- | ------------ | ---------------------------------------------------------------------- |
+| `soundboard.enabled`      | `false`      | Turn the soundboard on.                                                |
+| `soundboard.name`         | `Soundboard` | Name of the Television in the Home app.                                |
+| `soundboard.sourceFolder` | —            | Absolute path to the folder scanned for sounds.                        |
+| `soundboard.maxSounds`    | 10           | How many sounds to expose as inputs (1–10), plus the synthetic `None`. |
+| `soundboard.volume`       | (default)    | Optional volume (0–100) for soundboard playback.                       |
+| `soundboard.atvId`        | (default)    | Optional pyatv device ID to play the soundboard on a specific speaker. |
 
 ```json
 {
@@ -261,8 +268,9 @@ setup code as the bridge**.
 
 | Option            | Default          | Meaning                                                                              |
 | ----------------- | ---------------- | ------------------------------------------------------------------------------------ |
-| `cacheEnabled`    | `true`           | Replay repeated phrases from a cached WAV instead of re-synthesizing.                 |
-| `cacheMaxEntries` | 64               | Max cached phrase WAVs kept on disk (oldest evicted first).                           |
+| `cacheEnabled`    | `true`           | Replay repeated phrases from a cached WAV instead of re-synthesizing.                |
+| `cacheMaxEntries` | 64               | Max cached phrase WAVs kept on disk (oldest evicted first).                          |
+| `cacheDir`        | `vendor/cache/`  | Optional persistent cache directory outside the installed package.                   |
 | `preRender`       | `false`          | Synthesize + cache every button phrase at startup, in the background.                |
 | `restoreVolume`   | `false`          | pyatv only: restore the speaker's prior volume after an announcement.                |
 | `maxChars`        | 600              | Truncate longer utterances.                                                          |

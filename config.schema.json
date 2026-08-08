@@ -51,14 +51,38 @@
               "type": "string",
               "description": "Leave blank to use the default voice. A non-default voice is downloaded automatically the first time it speaks.",
               "oneOf": [
-                { "title": "Lessac - US English (light)", "enum": ["en_US-lessac-low"] },
-                { "title": "Amy - US English female (light)", "enum": ["en_US-amy-low"] },
-                { "title": "Ryan - US English male (light)", "enum": ["en_US-ryan-low"] },
-                { "title": "Kathleen - US English female (light)", "enum": ["en_US-kathleen-low"] },
-                { "title": "Danny - US English male (light)", "enum": ["en_US-danny-low"] },
-                { "title": "Alan - British English male (light)", "enum": ["en_GB-alan-low"] },
-                { "title": "Lessac - US English (richer)", "enum": ["en_US-lessac-medium"] },
-                { "title": "Amy - US English female (richer)", "enum": ["en_US-amy-medium"] }
+                {
+                  "title": "Lessac - US English (light)",
+                  "enum": ["en_US-lessac-low"]
+                },
+                {
+                  "title": "Amy - US English female (light)",
+                  "enum": ["en_US-amy-low"]
+                },
+                {
+                  "title": "Ryan - US English male (light)",
+                  "enum": ["en_US-ryan-low"]
+                },
+                {
+                  "title": "Kathleen - US English female (light)",
+                  "enum": ["en_US-kathleen-low"]
+                },
+                {
+                  "title": "Danny - US English male (light)",
+                  "enum": ["en_US-danny-low"]
+                },
+                {
+                  "title": "Alan - British English male (light)",
+                  "enum": ["en_GB-alan-low"]
+                },
+                {
+                  "title": "Lessac - US English (richer)",
+                  "enum": ["en_US-lessac-medium"]
+                },
+                {
+                  "title": "Amy - US English female (richer)",
+                  "enum": ["en_US-amy-medium"]
+                }
               ]
             },
             "speed": {
@@ -195,14 +219,38 @@
               "functionBody": "return model.azure && model.azure.enabled === true;"
             },
             "oneOf": [
-              { "title": "Ava - US English female (HD, most natural, default)", "enum": ["en-US-Ava:DragonHDLatestNeural"] },
-              { "title": "Andrew - US English male (HD)", "enum": ["en-US-Andrew:DragonHDLatestNeural"] },
-              { "title": "Emma - US English female (HD)", "enum": ["en-US-Emma:DragonHDLatestNeural"] },
-              { "title": "Brian - US English male (HD)", "enum": ["en-US-Brian:DragonHDLatestNeural"] },
-              { "title": "Aria - US English female (neural, emotive)", "enum": ["en-US-AriaNeural"] },
-              { "title": "Jenny - US English female (neural, emotive)", "enum": ["en-US-JennyNeural"] },
-              { "title": "Ada - British English female (HD)", "enum": ["en-GB-Ada:DragonHDLatestNeural"] },
-              { "title": "Ryan - British English male (HD)", "enum": ["en-GB-Ryan:DragonHDLatestNeural"] }
+              {
+                "title": "Ava - US English female (HD, most natural, default)",
+                "enum": ["en-US-Ava:DragonHDLatestNeural"]
+              },
+              {
+                "title": "Andrew - US English male (HD)",
+                "enum": ["en-US-Andrew:DragonHDLatestNeural"]
+              },
+              {
+                "title": "Emma - US English female (HD)",
+                "enum": ["en-US-Emma:DragonHDLatestNeural"]
+              },
+              {
+                "title": "Brian - US English male (HD)",
+                "enum": ["en-US-Brian:DragonHDLatestNeural"]
+              },
+              {
+                "title": "Aria - US English female (neural, emotive)",
+                "enum": ["en-US-AriaNeural"]
+              },
+              {
+                "title": "Jenny - US English female (neural, emotive)",
+                "enum": ["en-US-JennyNeural"]
+              },
+              {
+                "title": "Ada - British English female (HD)",
+                "enum": ["en-GB-Ada:DragonHDLatestNeural"]
+              },
+              {
+                "title": "Ryan - British English male (HD)",
+                "enum": ["en-GB-Ryan:DragonHDLatestNeural"]
+              }
             ]
           }
         }
@@ -256,6 +304,12 @@
         "minimum": 1,
         "maximum": 1000,
         "description": "Maximum number of cached phrase WAVs kept on disk (oldest are evicted first)."
+      },
+      "cacheDir": {
+        "title": "Persistent Phrase Cache Directory",
+        "type": "string",
+        "placeholder": "/var/lib/homebridge/pipo-speak-cache",
+        "description": "Optional absolute directory for cached WAVs and quality metadata. Set this outside the installed plugin directory so phrases survive npm/plugin upgrades. The Homebridge service user must be able to write it. PIPO_SPEAK_CACHE_DIR remains an environment-variable alternative."
       },
       "maxChars": {
         "title": "Max Characters Per Utterance",
@@ -400,12 +454,7 @@
       "title": "Azure Cloud Voice (high quality)",
       "expandable": true,
       "expanded": false,
-      "items": [
-        "azure.enabled",
-        "azure.region",
-        "azure.key",
-        "azure.voice"
-      ]
+      "items": ["azure.enabled", "azure.region", "azure.key", "azure.voice"]
     },
     {
       "type": "section",
@@ -423,12 +472,7 @@
       "title": "Performance & Startup",
       "expandable": true,
       "expanded": false,
-      "items": [
-        "cacheEnabled",
-        "preRender",
-        "restoreVolume",
-        "cacheMaxEntries"
-      ]
+      "items": ["cacheEnabled", "preRender", "restoreVolume", "cacheMaxEntries"]
     },
     {
       "type": "section",
