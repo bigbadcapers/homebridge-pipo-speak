@@ -100,6 +100,40 @@ test("constructor honors speed and cache toggles", () => {
   assert.equal(off.cache.enabled, false);
 });
 
+test("_render falls back to the configured Piper voice when Azure fails", async () => {
+  const { speaker, logged } = makeSpeaker({ voice: "en_US-lessac-low" });
+  const calls = [];
+  speaker.azure = {
+    synthesize: async () => {
+      calls.push("azure");
+      throw new Error("service unavailable");
+    },
+  };
+  speaker._gate = () => calls.push("gate");
+  speaker._ensureVoice = async (voice) => calls.push(["ensure", voice]);
+  speaker._synthesize = async (_text, voice) => {
+    calls.push(["piper", voice]);
+    return "/tmp/fallback.wav";
+  };
+
+  assert.equal(
+    await speaker._render("hello", "en-US-Ava:DragonHDLatestNeural", 1),
+    "/tmp/fallback.wav",
+  );
+  assert.deepEqual(calls, [
+    "azure",
+    "gate",
+    ["ensure", "en_US-lessac-low"],
+    ["piper", "en_US-lessac-low"],
+  ]);
+  assert.ok(
+    logged.some(
+      ([level, message]) =>
+        level === "warn" && message.includes("falling back to offline Piper"),
+    ),
+  );
+});
+
 test("_playTimeoutMs sizes the watchdog to the measured clip length", () => {
   const { speaker } = makeSpeaker();
   const wav = path.join(os.tmpdir(), `pipo-speak-pt-${process.pid}.wav`);
