@@ -146,6 +146,38 @@ speed overrides it.
 Set **Attention Chime** (`chimeFile`) to the absolute path of a short WAV and it
 is played immediately before every phrase — a quick "ding" to get attention.
 
+### Azure cloud voice (high quality)
+
+By default speech is synthesized offline with Piper. For a noticeably richer,
+more natural voice you can optionally switch to **Azure AI Speech** in the
+**Azure Cloud Voice** section of the UI (or an `azure` block in `config.json`):
+
+```json
+"azure": {
+  "enabled": true,
+  "region": "eastus",
+  "key": "<your Azure Speech key>",
+  "voice": "en-US-Ava:DragonHDLatestNeural"
+}
+```
+
+- **`enabled`** — toggle. When on (and a key is set), a cache miss is rendered
+  by Azure over HTTPS instead of by Piper; when off, nothing changes.
+- **`region` / `key`** — from an Azure AI Speech resource. The **free F0 tier**
+  (0.5M characters/month) is plenty for a phrase library. Instead of putting the
+  key in `config.json`, you can leave it blank and set the
+  `PIPO_SPEAK_AZURE_KEY` environment variable on the Homebridge service.
+- **`voice`** — a curated list of high-quality voices. The **Dragon HD** voices
+  (Ava/Andrew/Emma/Brian) sound the most natural and infer emotion from the
+  text; Aria/Jenny are standard neural voices.
+
+This is **safe on low-memory boards**: an Azure render is just an HTTPS request
+that writes a WAV (24 kHz mono PCM, the same shape Piper produces), so it does
+**not** load a model into RAM and the memory gate that protects Piper does not
+apply. Rendered phrases go into the same on-disk cache, so a repeated phrase is
+replayed from a file. If the key is missing the plugin logs a warning and falls
+back to the offline Piper voice.
+
 ### Phrase cache & pre-render
 
 Synthesized phrases are **cached to disk** by default (`cacheEnabled`), keyed by
@@ -245,6 +277,8 @@ setup code as the bridge**.
   `vendor/`).
 - `PIPO_SPEAK_CACHE_DIR` — override where cached phrase WAVs are stored
   (default: `vendor/cache/`).
+- `PIPO_SPEAK_AZURE_KEY` — Azure Speech key for the cloud voice, as an
+  alternative to putting it in `config.json` (see **Azure cloud voice** above).
 
 ## Development
 
