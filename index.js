@@ -34,7 +34,8 @@ class PipoSpeakPlatform {
     this.soundboard = this.config.soundboard || {};
     this.soundboards = this._soundboardConfigs();
     const warmSoundboard = this.soundboards.find(
-      ({ config }) => config.enabled === true && config.warmConnection !== false,
+      ({ config }) =>
+        config.enabled === true && config.warmConnection !== false,
     );
     const defaultAtvId =
       this.config.atvId ||

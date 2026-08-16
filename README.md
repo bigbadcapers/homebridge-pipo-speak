@@ -248,15 +248,15 @@ Because HomeKit only surfaces **one Television per bridge**, the soundboard is
 published as an **external accessory** — add it in the Home app with the **same
 setup code as the bridge**.
 
-| Option                  | Default      | Meaning                                                                  |
-| ----------------------- | ------------ | ------------------------------------------------------------------------ |
-| `soundboard.enabled`    | `false`      | Turn the soundboard on.                                                  |
-| `soundboard.name`       | `Soundboard` | Name of the Television in the Home app.                                  |
-| `soundboard.sourceFolder` | —          | Absolute path to the folder scanned for sounds, or the root for `soundFiles`. |
-| `soundboard.soundFiles` | —            | Optional ordered list of audio files, relative to `sourceFolder`, to expose as inputs. |
-| `soundboard.maxSounds`  | 10           | How many auto-discovered sounds to expose when `soundFiles` is empty (1–10), plus `None`. |
-| `soundboard.volume`     | (default)    | Optional volume (0–100) for soundboard playback.                         |
-| `soundboard.atvId`      | (default)    | Optional pyatv device ID to play the soundboard on a specific speaker.   |
+| Option                    | Default      | Meaning                                                                                   |
+| ------------------------- | ------------ | ----------------------------------------------------------------------------------------- |
+| `soundboard.enabled`      | `false`      | Turn the soundboard on.                                                                   |
+| `soundboard.name`         | `Soundboard` | Name of the Television in the Home app.                                                   |
+| `soundboard.sourceFolder` | —            | Absolute path to the folder scanned for sounds, or the root for `soundFiles`.             |
+| `soundboard.soundFiles`   | —            | Optional ordered list of audio files, relative to `sourceFolder`, to expose as inputs.    |
+| `soundboard.maxSounds`    | 10           | How many auto-discovered sounds to expose when `soundFiles` is empty (1–10), plus `None`. |
+| `soundboard.volume`       | (default)    | Optional volume (0–100) for soundboard playback.                                          |
+| `soundboard.atvId`        | (default)    | Optional pyatv device ID to play the soundboard on a specific speaker.                    |
 
 The legacy `soundboard` entry keeps the original soundboard accessory identity.
 Use `soundboards[]` for extra TV accessories. Each additional soundboard accepts

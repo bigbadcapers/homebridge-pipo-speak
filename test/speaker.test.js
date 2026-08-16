@@ -199,7 +199,10 @@ test("low-quality cache hits return immediately and schedule one Azure upgrade",
   try {
     const first = await speaker._prepareWav(phrase, speaker.azureVoice, 1);
     const second = await speaker._prepareWav(phrase, speaker.azureVoice, 1);
-    assert.equal(first.path, speaker.cache.artifactPath(phrase, 1, lowArtifact));
+    assert.equal(
+      first.path,
+      speaker.cache.artifactPath(phrase, 1, lowArtifact),
+    );
     assert.equal(second.path, first.path);
     assert.equal(calls, 1);
 
