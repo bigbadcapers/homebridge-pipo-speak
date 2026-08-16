@@ -69,6 +69,30 @@ test("scanSounds stops at maxSounds", () => {
   );
 });
 
+test("scanSounds honors explicit soundFiles in configured order", () => {
+  const root = makeTree([
+    "a.wav",
+    "b.wav",
+    "nested/a.mp3",
+    "notes.txt",
+  ]);
+  const got = scanSounds(root, {
+    maxSounds: 1,
+    soundFiles: [
+      "nested/a.mp3",
+      "missing.wav",
+      "notes.txt",
+      "../escape.wav",
+      "b.wav",
+      "nested/a.mp3",
+    ],
+  });
+  assert.deepEqual(
+    got.map((s) => s.relPath),
+    [path.join("nested", "a.mp3"), "b.wav"],
+  );
+});
+
 test("scanSounds ignores dotfiles and non-audio files", () => {
   const root = makeTree([
     ".hidden.wav",
