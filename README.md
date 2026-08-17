@@ -232,14 +232,9 @@ How it works:
 - Point it at a **source folder** on the Pi. On startup the plugin scans that
   folder **depth-first** and takes the first **N** playable audio files
   (`.wav .mp3 .m4a .aac .flac .ogg .opus .aiff .wma`, up to 10).
-- Or set `soundboard.soundFiles` to an ordered allowlist of files under that
-  source folder. When present, the TV inputs follow that list instead of the
-  depth-first scan.
 - It publishes a Television named after `soundboard.name` (default
-  `Soundboard`). Additional Televisions can be configured in `soundboards[]`;
-  they are published by the same platform instance as separate external
-  accessories. Each TV's inputs are **`None`** (identifier 0, a no-op resting
-  state) followed by one input per sound.
+  `Soundboard`). Its inputs are **`None`** (identifier 0, a no-op resting state)
+  followed by one input per sound.
 - Selecting any non-`None` input plays that file, then the input snaps back to
   `None` so you can fire the **same** sound again (momentary, like the phrase
   buttons).
@@ -248,56 +243,26 @@ Because HomeKit only surfaces **one Television per bridge**, the soundboard is
 published as an **external accessory** — add it in the Home app with the **same
 setup code as the bridge**.
 
-| Option                    | Default      | Meaning                                                                                   |
-| ------------------------- | ------------ | ----------------------------------------------------------------------------------------- |
-| `soundboard.enabled`      | `false`      | Turn the soundboard on.                                                                   |
-| `soundboard.name`         | `Soundboard` | Name of the Television in the Home app.                                                   |
-| `soundboard.sourceFolder` | —            | Absolute path to the folder scanned for sounds, or the root for `soundFiles`.             |
-| `soundboard.soundFiles`   | —            | Optional ordered list of audio files, relative to `sourceFolder`, to expose as inputs.    |
-| `soundboard.maxSounds`    | 10           | How many auto-discovered sounds to expose when `soundFiles` is empty (1–10), plus `None`. |
-| `soundboard.volume`       | (default)    | Optional volume (0–100) for soundboard playback.                                          |
-| `soundboard.atvId`        | (default)    | Optional pyatv device ID to play the soundboard on a specific speaker.                    |
-
-The legacy `soundboard` entry keeps the original soundboard accessory identity.
-Use `soundboards[]` for extra TV accessories. Each additional soundboard accepts
-the same fields, plus optional `id` for a stable UUID seed when the displayed
-name might change.
-
-Example: keep the original auto-scanned gallery and add a second Mac System
-Sounds TV backed by files in `/var/www/tones/mac-system-sounds`:
+| Option                    | Default      | Meaning                                                                |
+| ------------------------- | ------------ | ---------------------------------------------------------------------- |
+| `soundboard.enabled`      | `false`      | Turn the soundboard on.                                                |
+| `soundboard.name`         | `Soundboard` | Name of the Television in the Home app.                                |
+| `soundboard.sourceFolder` | —            | Absolute path to the folder scanned for sounds.                        |
+| `soundboard.maxSounds`    | 10           | How many sounds to expose as inputs (1–10), plus the synthetic `None`. |
+| `soundboard.volume`       | (default)    | Optional volume (0–100) for soundboard playback.                       |
+| `soundboard.atvId`        | (default)    | Optional pyatv device ID to play the soundboard on a specific speaker. |
 
 ```json
-"soundboard": {
-  "enabled": true,
-  "name": "Soundboard",
-  "sourceFolder": "/var/www/tones/sample-gallery",
-  "maxSounds": 10,
-  "volume": 100
-},
-"soundboards": [
-  {
+{
+  "platform": "PipoSpeak",
+  "soundboard": {
     "enabled": true,
-    "id": "mac-system-sounds",
-    "name": "Mac System Sounds",
-    "sourceFolder": "/var/www/tones",
-    "soundFiles": [
-      "mac-system-sounds/Basso.aiff",
-      "mac-system-sounds/Blow.aiff",
-      "mac-system-sounds/Bottle.aiff",
-      "mac-system-sounds/Frog.aiff",
-      "mac-system-sounds/Funk.aiff",
-      "mac-system-sounds/Glass.aiff",
-      "mac-system-sounds/Hero.aiff",
-      "mac-system-sounds/Morse.aiff",
-      "mac-system-sounds/Ping.aiff",
-      "mac-system-sounds/Pop.aiff",
-      "mac-system-sounds/Purr.aiff",
-      "mac-system-sounds/Sosumi.aiff",
-      "mac-system-sounds/Submarine.aiff",
-      "mac-system-sounds/Tink.aiff"
-    ]
+    "name": "Soundboard",
+    "sourceFolder": "/var/www/tones/sample-gallery",
+    "maxSounds": 10,
+    "volume": 60
   }
-]
+}
 ```
 
 ## Advanced / memory safety
