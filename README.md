@@ -232,13 +232,9 @@ How it works:
 - Point it at a **source folder** on the Pi. On startup the plugin scans that
   folder **depth-first** and takes the first **N** playable audio files
   (`.wav .mp3 .m4a .aac .flac .ogg .opus .aiff .wma`, up to 10).
-- Or set `soundboard.soundFiles` to an ordered allowlist of files under that
-  source folder. When present, the TV inputs follow that list instead of the
-  depth-first scan.
 - It publishes a Television named after `soundboard.name` (default
-  `Soundboard`). Additional Televisions can be configured in `soundboards[]`;
-  each TV's inputs are **`None`** (identifier 0, a no-op resting state) followed
-  by one input per sound.
+  `Soundboard`). Its inputs are **`None`** (identifier 0, a no-op resting state)
+  followed by one input per sound.
 - Selecting any non-`None` input plays that file, then the input snaps back to
   `None` so you can fire the **same** sound again (momentary, like the phrase
   buttons).
@@ -247,20 +243,14 @@ Because HomeKit only surfaces **one Television per bridge**, the soundboard is
 published as an **external accessory** — add it in the Home app with the **same
 setup code as the bridge**.
 
-| Option                      | Default      | Meaning                                                                    |
-| --------------------------- | ------------ | -------------------------------------------------------------------------- |
-| `soundboard.enabled`        | `false`      | Turn the soundboard on.                                                    |
-| `soundboard.name`           | `Soundboard` | Name of the Television in the Home app.                                    |
-| `soundboard.sourceFolder`   | —            | Absolute path to scan, or the root for `soundFiles`.                       |
-| `soundboard.soundFiles`     | —            | Optional ordered list of files relative to `sourceFolder`.                 |
-| `soundboard.maxSounds`      | 10           | Maximum auto-discovered inputs (1–10), plus the synthetic `None`.          |
-| `soundboard.volume`         | (default)    | Optional playback volume (0–100).                                         |
-| `soundboard.atvId`          | (default)    | Optional pyatv device ID for a specific speaker.                           |
-| `soundboard.warmConnection` | `false`      | Use the held connection only when this board targets the default speaker.  |
-
-The legacy `soundboard` entry keeps the original accessory identity. Add more
-Televisions through `soundboards[]`; each accepts the same fields plus an
-optional stable `id` for preserving the accessory identity across name changes.
+| Option                    | Default      | Meaning                                                                |
+| ------------------------- | ------------ | ---------------------------------------------------------------------- |
+| `soundboard.enabled`      | `false`      | Turn the soundboard on.                                                |
+| `soundboard.name`         | `Soundboard` | Name of the Television in the Home app.                                |
+| `soundboard.sourceFolder` | —            | Absolute path to the folder scanned for sounds.                        |
+| `soundboard.maxSounds`    | 10           | How many sounds to expose as inputs (1–10), plus the synthetic `None`. |
+| `soundboard.volume`       | (default)    | Optional volume (0–100) for soundboard playback.                       |
+| `soundboard.atvId`        | (default)    | Optional pyatv device ID to play the soundboard on a specific speaker. |
 
 ```json
 {
@@ -271,15 +261,7 @@ optional stable `id` for preserving the accessory identity across name changes.
     "sourceFolder": "/var/www/tones/sample-gallery",
     "maxSounds": 10,
     "volume": 60
-  },
-  "soundboards": [
-    {
-      "id": "mac-system-sounds",
-      "name": "Mac System Sounds",
-      "sourceFolder": "/var/www/tones/mac-system-sounds",
-      "soundFiles": ["Basso.aiff", "Glass.aiff", "Ping.aiff"]
-    }
-  ]
+  }
 }
 ```
 
