@@ -47,41 +47,78 @@
               }
             },
             "voice": {
-              "title": "Voice for this phrase (optional)",
+              "title": "Voice",
               "type": "string",
-              "description": "Leave blank to use the default voice. A non-default voice is downloaded automatically the first time it speaks.",
+              "default": "default",
+              "description": "Use the configured default voice, or always try a specific Azure or local voice first. If that voice fails, other configured voices are tried and the details are written to the Homebridge log.",
               "oneOf": [
                 {
-                  "title": "Lessac - US English (light)",
-                  "enum": ["en_US-lessac-low"]
+                  "title": "Use default voice",
+                  "enum": ["default"]
                 },
                 {
-                  "title": "Amy - US English female (light)",
-                  "enum": ["en_US-amy-low"]
+                  "title": "Azure: Ava - US English female (HD, most natural)",
+                  "enum": ["azure:en-US-Ava:DragonHDLatestNeural"]
                 },
                 {
-                  "title": "Ryan - US English male (light)",
-                  "enum": ["en_US-ryan-low"]
+                  "title": "Azure: Andrew - US English male (HD)",
+                  "enum": ["azure:en-US-Andrew:DragonHDLatestNeural"]
                 },
                 {
-                  "title": "Kathleen - US English female (light)",
-                  "enum": ["en_US-kathleen-low"]
+                  "title": "Azure: Emma - US English female (HD)",
+                  "enum": ["azure:en-US-Emma:DragonHDLatestNeural"]
                 },
                 {
-                  "title": "Danny - US English male (light)",
-                  "enum": ["en_US-danny-low"]
+                  "title": "Azure: Brian - US English male (HD)",
+                  "enum": ["azure:en-US-Brian:DragonHDLatestNeural"]
                 },
                 {
-                  "title": "Alan - British English male (light)",
-                  "enum": ["en_GB-alan-low"]
+                  "title": "Azure: Aria - US English female (neural, emotive)",
+                  "enum": ["azure:en-US-AriaNeural"]
                 },
                 {
-                  "title": "Lessac - US English (richer)",
-                  "enum": ["en_US-lessac-medium"]
+                  "title": "Azure: Jenny - US English female (neural, emotive)",
+                  "enum": ["azure:en-US-JennyNeural"]
                 },
                 {
-                  "title": "Amy - US English female (richer)",
-                  "enum": ["en_US-amy-medium"]
+                  "title": "Azure: Ada - British English female (HD)",
+                  "enum": ["azure:en-GB-Ada:DragonHDLatestNeural"]
+                },
+                {
+                  "title": "Azure: Ryan - British English male (HD)",
+                  "enum": ["azure:en-GB-Ryan:DragonHDLatestNeural"]
+                },
+                {
+                  "title": "Local: Lessac - US English (light)",
+                  "enum": ["piper:en_US-lessac-low"]
+                },
+                {
+                  "title": "Local: Amy - US English female (light)",
+                  "enum": ["piper:en_US-amy-low"]
+                },
+                {
+                  "title": "Local: Ryan - US English male (light)",
+                  "enum": ["piper:en_US-ryan-low"]
+                },
+                {
+                  "title": "Local: Kathleen - US English female (light)",
+                  "enum": ["piper:en_US-kathleen-low"]
+                },
+                {
+                  "title": "Local: Danny - US English male (light)",
+                  "enum": ["piper:en_US-danny-low"]
+                },
+                {
+                  "title": "Local: Alan - British English male (light)",
+                  "enum": ["piper:en_GB-alan-low"]
+                },
+                {
+                  "title": "Local: Lessac - US English (richer)",
+                  "enum": ["piper:en_US-lessac-medium"]
+                },
+                {
+                  "title": "Local: Amy - US English female (richer)",
+                  "enum": ["piper:en_US-amy-medium"]
                 }
               ]
             },
@@ -137,42 +174,74 @@
         }
       },
       "voice": {
-        "title": "Voice",
+        "title": "Default Voice",
         "type": "string",
-        "default": "en_US-lessac-low",
-        "description": "Offline Piper voice. The voice you pick is downloaded automatically the first time it speaks. \"Light\" voices use the least memory — best on small boards.",
+        "default": "piper:en_US-lessac-low",
+        "description": "Used by every phrase button set to Use default voice. Azure voices require Azure Cloud Voice below; local voices run with Piper on the device.",
         "oneOf": [
           {
-            "title": "Lessac - US English (light, default)",
-            "enum": ["en_US-lessac-low"]
+            "title": "Azure: Ava - US English female (HD, most natural)",
+            "enum": ["azure:en-US-Ava:DragonHDLatestNeural"]
           },
           {
-            "title": "Amy - US English female (light)",
-            "enum": ["en_US-amy-low"]
+            "title": "Azure: Andrew - US English male (HD)",
+            "enum": ["azure:en-US-Andrew:DragonHDLatestNeural"]
           },
           {
-            "title": "Ryan - US English male (light)",
-            "enum": ["en_US-ryan-low"]
+            "title": "Azure: Emma - US English female (HD)",
+            "enum": ["azure:en-US-Emma:DragonHDLatestNeural"]
           },
           {
-            "title": "Kathleen - US English female (light)",
-            "enum": ["en_US-kathleen-low"]
+            "title": "Azure: Brian - US English male (HD)",
+            "enum": ["azure:en-US-Brian:DragonHDLatestNeural"]
           },
           {
-            "title": "Danny - US English male (light)",
-            "enum": ["en_US-danny-low"]
+            "title": "Azure: Aria - US English female (neural, emotive)",
+            "enum": ["azure:en-US-AriaNeural"]
           },
           {
-            "title": "Alan - British English male (light)",
-            "enum": ["en_GB-alan-low"]
+            "title": "Azure: Jenny - US English female (neural, emotive)",
+            "enum": ["azure:en-US-JennyNeural"]
           },
           {
-            "title": "Lessac - US English (richer, more memory)",
-            "enum": ["en_US-lessac-medium"]
+            "title": "Azure: Ada - British English female (HD)",
+            "enum": ["azure:en-GB-Ada:DragonHDLatestNeural"]
           },
           {
-            "title": "Amy - US English female (richer, more memory)",
-            "enum": ["en_US-amy-medium"]
+            "title": "Azure: Ryan - British English male (HD)",
+            "enum": ["azure:en-GB-Ryan:DragonHDLatestNeural"]
+          },
+          {
+            "title": "Local: Lessac - US English (light)",
+            "enum": ["piper:en_US-lessac-low"]
+          },
+          {
+            "title": "Local: Amy - US English female (light)",
+            "enum": ["piper:en_US-amy-low"]
+          },
+          {
+            "title": "Local: Ryan - US English male (light)",
+            "enum": ["piper:en_US-ryan-low"]
+          },
+          {
+            "title": "Local: Kathleen - US English female (light)",
+            "enum": ["piper:en_US-kathleen-low"]
+          },
+          {
+            "title": "Local: Danny - US English male (light)",
+            "enum": ["piper:en_US-danny-low"]
+          },
+          {
+            "title": "Local: Alan - British English male (light)",
+            "enum": ["piper:en_GB-alan-low"]
+          },
+          {
+            "title": "Local: Lessac - US English (richer)",
+            "enum": ["piper:en_US-lessac-medium"]
+          },
+          {
+            "title": "Local: Amy - US English female (richer)",
+            "enum": ["piper:en_US-amy-medium"]
           }
         ]
       },
@@ -187,10 +256,10 @@
         "type": "object",
         "properties": {
           "enabled": {
-            "title": "Use Azure cloud voice instead of the offline Piper voice",
+            "title": "Enable Azure cloud voices",
             "type": "boolean",
             "default": false,
-            "description": "When on, phrases are rendered by Azure AI Speech (natural neural / Dragon HD voices) and cached, instead of the on-board Piper voice. Requires the Azure Speech key + region below. A cache miss makes one small HTTPS request (no local model), so it is safe on low-memory boards. Falls back to the offline voice if the key is missing or a cloud request fails."
+            "description": "Enables synthesis for Azure choices in the Default Voice and phrase-button Voice selectors. Azure failures are logged and fall back to another configured voice so a button press still has the best chance to speak."
           },
           "region": {
             "title": "Azure Region",
@@ -209,49 +278,6 @@
             "condition": {
               "functionBody": "return model.azure && model.azure.enabled === true;"
             }
-          },
-          "voice": {
-            "title": "Azure Voice",
-            "type": "string",
-            "default": "en-US-Ava:DragonHDLatestNeural",
-            "description": "High-quality neural voice. The 'HD' (Dragon HD) voices sound the most natural and infer emotion from the text automatically; Aria/Jenny are standard neural voices that also support explicit emotion.",
-            "condition": {
-              "functionBody": "return model.azure && model.azure.enabled === true;"
-            },
-            "oneOf": [
-              {
-                "title": "Ava - US English female (HD, most natural, default)",
-                "enum": ["en-US-Ava:DragonHDLatestNeural"]
-              },
-              {
-                "title": "Andrew - US English male (HD)",
-                "enum": ["en-US-Andrew:DragonHDLatestNeural"]
-              },
-              {
-                "title": "Emma - US English female (HD)",
-                "enum": ["en-US-Emma:DragonHDLatestNeural"]
-              },
-              {
-                "title": "Brian - US English male (HD)",
-                "enum": ["en-US-Brian:DragonHDLatestNeural"]
-              },
-              {
-                "title": "Aria - US English female (neural, emotive)",
-                "enum": ["en-US-AriaNeural"]
-              },
-              {
-                "title": "Jenny - US English female (neural, emotive)",
-                "enum": ["en-US-JennyNeural"]
-              },
-              {
-                "title": "Ada - British English female (HD)",
-                "enum": ["en-GB-Ada:DragonHDLatestNeural"]
-              },
-              {
-                "title": "Ryan - British English male (HD)",
-                "enum": ["en-GB-Ryan:DragonHDLatestNeural"]
-              }
-            ]
           }
         }
       },
@@ -533,7 +559,7 @@
       "title": "Azure Cloud Voice (high quality)",
       "expandable": true,
       "expanded": false,
-      "items": ["azure.enabled", "azure.region", "azure.key", "azure.voice"]
+      "items": ["azure.enabled", "azure.region", "azure.key"]
     },
     {
       "type": "section",

@@ -100,8 +100,10 @@ test("constructor honors speed and cache toggles", () => {
   assert.equal(off.cache.enabled, false);
 });
 
-test("_render falls back to the configured Piper voice when Azure fails", async () => {
-  const { speaker, logged } = makeSpeaker({ voice: "en_US-lessac-low" });
+test("_render falls back to Piper with detailed logging when Azure fails", async () => {
+  const { speaker, logged } = makeSpeaker({
+    voice: "azure:en-US-Ava:DragonHDLatestNeural",
+  });
   const calls = [];
   speaker.azure = {
     synthesize: async () => {
@@ -117,7 +119,7 @@ test("_render falls back to the configured Piper voice when Azure fails", async 
   };
 
   assert.equal(
-    await speaker._render("hello", "en-US-Ava:DragonHDLatestNeural", 1),
+    await speaker._render("hello", "default", 1),
     "/tmp/fallback.wav",
   );
   assert.deepEqual(calls, [
@@ -129,16 +131,67 @@ test("_render falls back to the configured Piper voice when Azure fails", async 
   assert.ok(
     logged.some(
       ([level, message]) =>
-        level === "warn" && message.includes("falling back to offline Piper"),
+        level === "warn" &&
+        message.includes(
+          'azure voice "en-US-Ava:DragonHDLatestNeural" failed',
+        ) &&
+        message.includes('trying piper voice "en_US-lessac-low"'),
     ),
   );
 });
 
+test("explicit Piper voice is first even when Azure is configured", () => {
+  const { speaker } = makeSpeaker({
+    voice: "azure:en-US-Ava:DragonHDLatestNeural",
+  });
+  speaker.azureVoice = "en-US-Ava:DragonHDLatestNeural";
+  speaker.azure = { synthesize: async () => "/tmp/azure.wav" };
+  const renderers = speaker._renderers("piper:en_US-amy-medium");
+  assert.deepEqual(
+    renderers.map(({ provider, voice }) => ({ provider, voice })),
+    [
+      { provider: "piper", voice: "en_US-amy-medium" },
+      { provider: "azure", voice: "en-US-Ava:DragonHDLatestNeural" },
+      { provider: "piper", voice: "en_US-lessac-low" },
+    ],
+  );
+});
+
+test("explicit voice only reuses its exact cached provider and voice", async () => {
+  const { speaker } = makeSpeaker({ voice: "piper:en_US-lessac-low" });
+  const phrase = `exact local cache ${process.pid}`;
+  const source = path.join(os.tmpdir(), `pipo-exact-cache-${process.pid}.wav`);
+  fs.writeFileSync(source, makeWavHeader(16000, 24000, 1, 16));
+  await speaker.cache.store(source, phrase, 1, {
+    provider: "azure",
+    voice: "en-US-Ava:DragonHDLatestNeural",
+    quality: 100,
+  });
+  let synthesized;
+  speaker._gate = () => {};
+  speaker._ensureVoice = async () => {};
+  speaker._synthesize = async (_text, voice) => {
+    synthesized = voice;
+    return source;
+  };
+  try {
+    const prepared = await speaker._prepareWav(
+      phrase,
+      "piper:en_US-amy-medium",
+      1,
+    );
+    assert.equal(synthesized, "en_US-amy-medium");
+    assert.equal(prepared.fromCache, false);
+  } finally {
+    fs.rmSync(source, { force: true });
+  }
+});
+
 test("stored Azure audio is used when the live endpoint is unavailable", async () => {
   const { speaker } = makeSpeaker({
+    voice: "azure:en-US-Ava:DragonHDLatestNeural",
     azure: {
       enabled: true,
-      voice: "en-US-Ava:DragonHDLatestNeural",
     },
   });
   const phrase = `offline cloud hit ${process.pid}`;
@@ -156,7 +209,7 @@ test("stored Azure audio is used when the live endpoint is unavailable", async (
       throw new Error("Piper should not run for a stored Azure phrase");
     };
 
-    const prepared = await speaker._prepareWav(phrase, speaker.voice, 1);
+    const prepared = await speaker._prepareWav(phrase, "default", 1);
     assert.equal(prepared.fromCache, true);
     assert.equal(prepared.temp, false);
     assert.equal(
@@ -168,9 +221,9 @@ test("stored Azure audio is used when the live endpoint is unavailable", async (
   }
 });
 
-test("low-quality cache hits return immediately and schedule one Azure upgrade", async () => {
+test("default Azure voice does not reuse a cached Piper variant", async () => {
   const { speaker } = makeSpeaker();
-  const phrase = `quiet promotion ${process.pid}`;
+  const phrase = `exact default ${process.pid}`;
   const low = path.join(os.tmpdir(), `pipo-low-${process.pid}.wav`);
   const high = path.join(os.tmpdir(), `pipo-high-${process.pid}.wav`);
   fs.writeFileSync(low, makeWavHeader(16000, 16000, 1, 16));
@@ -182,44 +235,35 @@ test("low-quality cache hits return immediately and schedule one Azure upgrade",
   };
   await speaker.cache.store(low, phrase, 1, lowArtifact);
 
-  let release;
-  const pending = new Promise((resolve) => {
-    release = resolve;
-  });
   let calls = 0;
   speaker.azureVoice = "en-US-Ava:DragonHDLatestNeural";
+  speaker.defaultVoice = {
+    provider: "azure",
+    voice: speaker.azureVoice,
+  };
   speaker.azure = {
     synthesize: async () => {
       calls += 1;
-      await pending;
       return high;
     },
   };
 
   try {
-    const first = await speaker._prepareWav(phrase, speaker.azureVoice, 1);
-    const second = await speaker._prepareWav(phrase, speaker.azureVoice, 1);
-    assert.equal(
-      first.path,
-      speaker.cache.artifactPath(phrase, 1, lowArtifact),
-    );
-    assert.equal(second.path, first.path);
+    const first = await speaker._prepareWav(phrase, "default", 1);
+    assert.equal(first.path, high);
+    assert.equal(first.fromCache, false);
     assert.equal(calls, 1);
-
-    release();
-    await Promise.all([...speaker._upgrades.values()]);
     const best = speaker.cache.getBest(phrase, 1);
     assert.equal(best.provider, "azure");
     assert.equal(best.quality, 100);
   } finally {
-    release();
     fs.rmSync(low, { force: true });
     fs.rmSync(high, { force: true });
   }
 });
 
-test("a failed background upgrade leaves the cached fallback usable", async () => {
-  const { speaker } = makeSpeaker();
+test("a failed explicit Azure voice uses the exact cached Piper fallback", async () => {
+  const { speaker, logged } = makeSpeaker();
   const phrase = `failed promotion ${process.pid}`;
   const low = path.join(os.tmpdir(), `pipo-failed-low-${process.pid}.wav`);
   fs.writeFileSync(low, makeWavHeader(16000, 16000, 1, 16));
@@ -236,10 +280,22 @@ test("a failed background upgrade leaves the cached fallback usable", async () =
   };
 
   try {
-    const prepared = await speaker._prepareWav(phrase, speaker.azureVoice, 1);
-    await Promise.all([...speaker._upgrades.values()]);
+    const prepared = await speaker._prepareWav(
+      phrase,
+      `azure:${speaker.azureVoice}`,
+      1,
+    );
     assert.equal(prepared.fromCache, true);
+    assert.equal(prepared.provider, "piper");
     assert.equal(speaker.cache.getBest(phrase, 1).quality, 10);
+    assert.ok(
+      logged.some(
+        ([level, message]) =>
+          level === "warn" &&
+          message.includes(`azure voice "${speaker.azureVoice}" failed`) &&
+          message.includes(`trying piper voice "${speaker.voice}"`),
+      ),
+    );
   } finally {
     fs.rmSync(low, { force: true });
   }

@@ -69,6 +69,12 @@ test("getBest persists and ranks provider variants across instances", async () =
   assert.equal(best.provider, "azure");
   assert.equal(best.quality, 100);
   assert.equal(best.voice, "en-US-Ava:DragonHDLatestNeural");
+  const piper = restarted.getBest("hello", 1, {
+    provider: "piper",
+    voice: "en_US-lessac-low",
+  });
+  assert.equal(piper.provider, "piper");
+  assert.equal(piper.voice, "en_US-lessac-low");
 });
 
 test("getBest ignores missing artifacts referenced by a manifest", async () => {
